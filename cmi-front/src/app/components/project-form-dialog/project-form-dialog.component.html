@@ -1,0 +1,28 @@
+<h1 mat-dialog-title>{{action == 'edit' ? "Edición proyecto" : "Creación proyecto"}}</h1>
+<div mat-dialog-content>
+  <mat-form-field style="width: 100%;">
+    <mat-label>Nombre</mat-label>
+    <input matInput [(ngModel)]="name">
+  </mat-form-field>
+  <br>
+  <mat-form-field style="width: 100%;">
+    <mat-label>Clasificaciones libres obligatorias</mat-label>
+    <input matInput type="number" [(ngModel)]="minOpenQuestionsCnt">
+  </mat-form-field>
+  <br>
+  <mat-form-field style="width: 100%;">
+    <mat-label>Texto introducción</mat-label>
+    <textarea matInput [(ngModel)]="introductionText" cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="1"  cdkAutosizeMaxRows="15"></textarea>
+  </mat-form-field>
+  <br>
+  <mat-form-field style="width: 100%;">
+    <mat-label>Texto final</mat-label>
+    <textarea matInput [(ngModel)]="endingText" cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="1"  cdkAutosizeMaxRows="15"></textarea>
+  </mat-form-field>
+</div>
+<mat-dialog-actions align="end">
+  <button mat-button color="primary" (click)="close()" style="margin-left: 1rem;">Cancelar</button>
+  <button mat-flat-button *ngIf="action=='edit'" color="primary" (click)="deleteResults()" style="margin-left: 1rem;">Eliminar resultados</button>
+  <button mat-flat-button *ngIf="action=='edit'" color="primary" (click)="copyAccessLink()" style="margin-left: 1rem;">Copiar link</button>
+  <button mat-flat-button color="primary" (click)="submit()" style="margin-left: 1rem;">Guardar</button>
+</mat-dialog-actions>

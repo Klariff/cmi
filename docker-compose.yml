@@ -1,0 +1,41 @@
+version: '3'
+services:
+  backend:
+    container_name: cmi-back
+    build:
+      context: ./cmi-back
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./cmi-back:/app
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+
+  frontend:
+    container_name: cmi-front
+    build:
+      context: ./cmi-front
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    volumes:
+      - ./cmi-front:/app
+
+  database:
+    image: mongo:6.0.13
+    container_name: cmi-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./cmi-db:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

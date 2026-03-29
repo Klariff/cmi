@@ -1,0 +1,21 @@
+<div class="main-container">
+    <mat-stepper [linear]="true" #stepper>
+      <mat-step completed=false label="Video Tutorial">
+        <video-guide-component></video-guide-component>
+        <div class="bottom-buttons" style="text-align: end;">
+          <button (click)="openFormStep(stepper)" [disabled]="!videoGuideComponent?.videoEnded"
+            mat-flat-button color="primary">Empezar</button>
+        </div>
+      </mat-step>
+      <mat-step completed=false label="Datos Personales">
+        <user-form-component *ngIf="!environment.shortcutExcercise"></user-form-component>
+        <card-exercise-component *ngIf="environment.shortcutExcercise"></card-exercise-component>
+        <div class="bottom-buttons" style="text-align: end;">
+          <button (click)="openExcerciseStep(stepper)" mat-flat-button color="primary">Siguiente</button>
+        </div>
+      </mat-step>
+      <mat-step completed=false label="CMI, Ejercicio de Clasificación">
+        <card-exercise-component></card-exercise-component>
+      </mat-step>
+    </mat-stepper>
+  </div>

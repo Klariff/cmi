@@ -1,0 +1,165 @@
+<form [formGroup]="userForm">
+    <div class="grid-container">
+        <div>
+            <p class="info-text">{{introductionText}}</p>
+            <p class="info-text">Después de diligenciar sus datos personales y de haber marcado la
+                casilla en la que usted manifiesta su intención de participar y
+                aceptar el tratamiento de datos, aparecerán las tarjetas que
+                representan los elementos que deberá agrupar. Obsérvelas y
+                clasifíquelas en grupos, siguiendo algún criterio el cual deberá
+                escribir en la parte superior de cada clasificación, de manera que
+                las tarjetas ubicadas dentro de cada grupo tengan algo en común y
+                a la vez se diferencien de los otros grupos. A cada grupo que cree
+                deberá asignarle un nombre distinto en la parte superior derecha.
+                Puede usar cualquier criterio que quiera para agrupar las tarjetas y
+                puede dividirlas en tantos grupos cuantos quiera. No hay tipo
+                alguno de clasificación correcta o incorrecta para sus respuestas.
+                Tómese el tiempo necesario.
+                Después de utilizar al menos tres criterios para agruparlas deberá
+                seguir las instrucciones para llevar a cabo dos nuevas
+                agrupaciones adicionales, esta vez a partir de dos criterios que se
+                le propondrán.
+                Tenga presente que la información que suministre es de carácter
+                confidencial y solo será tenida en cuenta para propósitos
+                académicos. En caso de ser publicada no se suministrarán
+                nombres ni información del participante, de acuerdo a La ley 1585
+                de 2012, la cual protege los derechos de confidencialidad de la
+                información.</p>
+            <mat-checkbox formControlName="formConsent" color="primary">Acepto participar</mat-checkbox>
+            <mat-error *ngIf="!userForm.get('formConsent')?.valid && formAttempt">Debe aceptar el
+                consentimiento</mat-error>
+        </div>
+        <div class="form-column">
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Nombre completo</mat-label>
+                    <input matInput formControlName="fullName" required>
+                    <mat-error *ngIf="!userForm.get('fullName')?.valid">Nombre completo inválido</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Edad</mat-label>
+                    <input matInput max="99" min="1" type="number" formControlName="age" required>
+                    <mat-error *ngIf="!userForm.get('age')?.valid">Edad inválida (Valores entre 1 y 99)</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Género</mat-label>
+                    <mat-select formControlName="gender">
+                        <mat-option value="femenino">Femenino</mat-option>
+                        <mat-option value="masculino">Masculino</mat-option>
+                        <mat-option value="otro">Otro</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="!userForm.get('gender')?.valid">Género inválido</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Estrato socioeconómico de su vivienda</mat-label>
+                    <mat-select formControlName="socialLevel">
+                        <mat-option value="N/A">N/A</mat-option>
+                        <mat-option value="1">1</mat-option>
+                        <mat-option value="2">2</mat-option>
+                        <mat-option value="3">3</mat-option>
+                        <mat-option value="4">4</mat-option>
+                        <mat-option value="5">5</mat-option>
+                        <mat-option value="6">6</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="!userForm.get('socialLevel')?.valid">Estrato inválido</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Último título obtenido</mat-label>
+                    <mat-select formControlName="educationalLevel">
+                        <mat-option value="N/A">N/A</mat-option>
+                        <mat-option value="bachiller">Bachiller</mat-option>
+                        <mat-option value="tecnico">Técnico</mat-option>
+                        <mat-option value="tecnologo">Tecnólogo</mat-option>
+                        <mat-option value="profesional">Profesional</mat-option>
+                        <mat-option value="especialista">Especialista</mat-option>
+                        <mat-option value="magister">Magister</mat-option>
+                        <mat-option value="doctorado">Doctorado</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="!userForm.get('educationalLevel')?.valid">Nivel educativo inválido</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>País</mat-label>
+                    <input #countryInput type="text" placeholder="Seleccione un país" matInput
+                        [formControl]="$any(userForm).controls['country']" [matAutocomplete]="countrySelect"
+                        (input)="filterCountries()" (focus)="filterCountries()">
+                    <mat-autocomplete (optionSelected)='countrySelectionChange($event.option.value)' requireSelection
+                        #countrySelect="matAutocomplete">
+                        <mat-option *ngFor="let country of filteredCountries" [value]="country">
+                            {{ country }}
+                        </mat-option>
+                    </mat-autocomplete>
+                    <mat-error *ngIf="!userForm.get('country')?.valid">País inválido</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Región</mat-label>
+                    <input #regionInput type="text" placeholder="Seleccione una región" matInput
+                        [formControl]="$any(userForm).controls['region']" [matAutocomplete]="regionSelect"
+                        (input)="filterRegions()" (focus)="filterRegions()">
+                    <mat-autocomplete (optionSelected)='regionSelectionChange($event.option.value)' requireSelection
+                        #regionSelect="matAutocomplete">
+                        <mat-option *ngFor="let region of filteredRegions" [value]="region">
+                            {{ region }}
+                        </mat-option>
+                    </mat-autocomplete>
+                    <mat-error *ngIf="!userForm.get('region')?.valid">Región inválida</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Ciudad</mat-label>
+                    <input #cityInput type="text" placeholder="Seleccione una ciudad" matInput
+                        [formControl]="$any(userForm).controls['city']" [matAutocomplete]="citySelect"
+                        (input)="filterCities()" (focus)="filterCities()">
+                    <mat-autocomplete (optionSelected)='citySelectionChange($event.option.value)' requireSelection
+                        #citySelect="matAutocomplete">
+                        <mat-option *ngFor="let city of filteredCities" [value]="city">
+                            {{ city }}
+                        </mat-option>
+                    </mat-autocomplete>
+                    <mat-error *ngIf="!userForm.get('city')?.valid">Ciudad inválida</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Área</mat-label>
+                    <input #areaInput type="text" placeholder="Seleccione una área" matInput
+                        [formControl]="$any(userForm).controls['area']" [matAutocomplete]="areaSelect"
+                        (input)="filterAreas()" (focus)="filterAreas()">
+                    <mat-autocomplete requireSelection
+                        #areaSelect="matAutocomplete">
+                        <mat-option *ngFor="let area of filteredAreas" [value]="area">
+                            {{ area }}
+                        </mat-option>
+                    </mat-autocomplete>
+                    <mat-error *ngIf="!userForm.get('area')?.valid">Área inválida</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-form-field appearance="outline" class="form-field">
+                    <mat-label>Observaciones</mat-label>
+                    <input matInput formControlName="observations">
+                    <mat-error *ngIf="!userForm.get('observations')?.valid">Observaciones inválidas</mat-error>
+                </mat-form-field>
+            </div>
+            <div class="grid-item">
+                <mat-checkbox formControlName="dataAgreement" color="primary">Acepto los términos de tratamiento de
+                    datos</mat-checkbox>
+                <mat-error *ngIf="!userForm.get('dataAgreement')?.valid && formAttempt">Debe aceptar los términos de
+                    tratamiento de datos</mat-error>
+            </div>
+        </div>
+    </div>
+
+</form>

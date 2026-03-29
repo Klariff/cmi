@@ -1,0 +1,38 @@
+<h1 mat-dialog-title>{{action == 'edit' ? "Edición clasificación" : "Creación clasificación"}}</h1>
+<div mat-dialog-content>
+  <mat-form-field style="width: 100%;">
+    <mat-label>Nombre</mat-label>
+    <input matInput [(ngModel)]="name">
+  </mat-form-field>
+  <br>
+  <mat-form-field style="width: 100%;">
+    <mat-label>Número</mat-label>
+    <input matInput type="number" [(ngModel)]="code">
+  </mat-form-field>
+  <mat-form-field style="width: 100%;">
+    <mat-label>Indicación</mat-label>
+    <textarea matInput [(ngModel)]="indication"></textarea>
+  </mat-form-field>
+  <h3 style="font-weight: 400; color: black;">Categorías</h3>
+  <div style="display: grid; grid-template-columns: 90% 10%;">
+      <mat-form-field style="width: 100%;">
+        <mat-label>Categoría</mat-label>
+        <input matInput [(ngModel)]="auxCategory">
+      </mat-form-field>
+      <button style="top: 4px;" mat-icon-button color="ccc" aria-label="Example icon button with a home icon" (click)="createCategory()">
+        <mat-icon>add</mat-icon>
+      </button>
+  </div>
+  <div cdkDropList class="example-list" (cdkDropListDropped)="drop($event)">
+    <div class="example-box" *ngFor="let category of namedCategories" cdkDrag>
+        {{category}}
+        <button style="top: 4px;" mat-icon-button color="gray" aria-label="Example icon button with a home icon" (click)="deleteCategory(category)">
+            <mat-icon>delete</mat-icon>
+          </button>
+    </div>
+  </div>
+</div>
+<mat-dialog-actions align="end">
+  <button mat-button color="primary" (click)="close()" style="margin-left: 1rem;">Cancelar</button>
+  <button mat-flat-button color="primary" (click)="submit()" style="margin-left: 1rem;">Guardar</button>
+</mat-dialog-actions>

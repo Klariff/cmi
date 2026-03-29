@@ -1,0 +1,24 @@
+<div class="main-container">
+    <h2>Registro</h2>
+    <br>
+    <mat-form-field style="width: 100%;">
+        <input matInput placeholder="Nombre completo" (keyup.enter)="signup()" [(ngModel)]="fullName" name="fullname"
+            required>
+    </mat-form-field>
+    <br>
+    <mat-form-field style="width: 100%;">
+        <input matInput placeholder="Usuario" (keyup.enter)="signup()" [(ngModel)]="username" name="user" required>
+    </mat-form-field>
+    <br>
+    <mat-form-field style="width: 100%;">
+        <input matInput type="password" placeholder="Contraseña" (keyup.enter)="signup()" [(ngModel)]="password"
+            name="password" required>
+    </mat-form-field>
+    <br>
+    <div style="width: 100%; text-align: center;">
+        <button mat-raised-button style="width:70%; margin-bottom: 1rem;margin-top: 1rem;" (click)="signup()"
+            color="primary">Registrar</button>
+        <button mat-button style="width:70%;" (click)="login()" color="primary">Ya tengo cuenta</button>
+        <br>
+    </div>
+</div>

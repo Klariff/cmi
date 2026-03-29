@@ -1,0 +1,241 @@
+<div *ngIf="loggedIn">
+    <mat-drawer-container class="example-container" autosize>
+        <mat-drawer #drawer class="example-sidenav" mode="side" opened>
+            <mat-form-field>
+                <mat-label>Proyecto</mat-label>
+                <mat-select [(ngModel)]="selectedProject" (selectionChange)="setProject($event.value)">
+                    <mat-option [value]="null">Seleccionar</mat-option>
+                    <mat-option *ngFor="let project of user?.projects"
+                        [value]="project._id">{{project.name}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <div *ngIf="selectedProject != null">
+                <div>
+                    <button id="classifications-tab" mat-button (click)="setPage('classifications')"
+                        class="sidenav-item">
+                        <mat-icon>border_all</mat-icon>
+                        Clasificaciones
+                    </button><br>
+                </div>
+                <div>
+                    <button id="cards-tab" mat-button (click)="setPage('cards')" class="sidenav-item">
+                        <mat-icon>note</mat-icon>
+                        Tarjetas
+                    </button><br>
+                </div>
+                <div>
+                    <button id="participants-tab" mat-button (click)="setPage('participants')" class="sidenav-item">
+                        <mat-icon>people</mat-icon>
+                        Participantes
+                    </button><br>
+                </div>
+                <div>
+                    <button id="parameters-tab" mat-button (click)="setPage('parameters')" class="sidenav-item">
+                        <mat-icon>settings</mat-icon>
+                        Configuración
+                    </button><br>
+                </div>
+                <div>
+                    <button id="copy-access-link" mat-button (click)="copyAccessLinkResearcher()" class="sidenav-item">
+                        <mat-icon>file_copy</mat-icon>
+                        Copiar link
+                    </button><br>
+                </div>
+            </div>
+            <div style="position: absolute; bottom: 100px;">
+                <button id="create-project-tab" mat-button (click)="createProject()" class="sidenav-item">
+                    <mat-icon>add</mat-icon>
+                    Crear proyecto
+                </button><br>
+            </div>
+
+            <div style="position: absolute; bottom: 50px;">
+                <button id="user-tab" mat-button (click)="setPage('user')" class="sidenav-item">
+                    <mat-icon>person</mat-icon>
+                    Usuario
+                </button><br>
+            </div>
+            <div style="position: absolute; bottom: 0;">
+                <button mat-button (click)="logout()" class="sidenav-item">
+                    <mat-icon>exit_to_app</mat-icon>
+                    Cerrar sesión
+                </button><br>
+            </div>
+        </mat-drawer>
+        <div class="example-sidenav-content">
+            <div *ngIf="selectedProject == null && this.page != 'user'" style="text-align: center; width: 100%; position: absolute; top: 50%">
+                <h2>
+                    Seleccione o cree un proyecto
+                </h2>
+            </div>
+            <div *ngIf="page == 'cards' && selectedProject != null" class="page">
+                <h1>Tarjetas</h1>
+                <h3>Nota: La cantidad de tarjetas debe ser, como mínimo, el número más alto de cantidad de categorias en
+                    cualquier clasificación.</h3>
+                <button mat-raised-button color="primary" (click)="addCard()">Crear</button> <br><br>
+                <div class="mat-elevation-z8">
+                    <table mat-table [dataSource]="cardsDataSource" matSort>
+                        <ng-container matColumnDef="code">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="10%"> Número </th>
+                            <td mat-cell *matCellDef="let row"> {{row.code}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="name">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="70%"> Título </th>
+                            <td mat-cell *matCellDef="let row"> {{row.name}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="action">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="20%"> Acción </th>
+                            <td mat-cell *matCellDef="let row">
+                                <button (click)="editCard(row)" mat-icon-button
+                                    aria-label="Example icon button with a vertical three dot icon">
+                                    <mat-icon style="color: gray;">edit</mat-icon>
+                                </button>
+                                <button (click)="deleteCard(row)" mat-icon-button
+                                    aria-label="Example icon button with a vertical three dot icon">
+                                    <mat-icon style="color: gray;">delete</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="cardsColumns"></tr>
+                        <tr mat-row *matRowDef="let row; columns: cardsColumns;"></tr>
+                    </table>
+                    <mat-paginator [pageSizeOptions]="[10, 25, 50]" (page)="handlePageEventCards($event)"
+                        [pageIndex]="pageIndexCards" [length]="lengthCards" [pageSize]="pageSizeCards"
+                        [showFirstLastButtons]="true"></mat-paginator>
+                </div>
+            </div>
+            <div *ngIf="page == 'classifications' && selectedProject != null" class="page">
+                <h1>Clasificaciones</h1>
+                <button mat-raised-button color="primary" (click)="addClassification()">Crear</button> <br><br>
+                <div class="mat-elevation-z8">
+                    <table mat-table [dataSource]="classificationsDataSource" matSort>
+                        <ng-container matColumnDef="code">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="10%"> Número </th>
+                            <td mat-cell *matCellDef="let row"> {{row.code}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="name">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="10%"> Nombre </th>
+                            <td mat-cell *matCellDef="let row"> {{row.name}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="indication">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="60%"> Indicación </th>
+                            <td mat-cell *matCellDef="let row"> {{row.indication}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="action">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="20%"> Acción </th>
+                            <td mat-cell *matCellDef="let row">
+                                <button (click)="editClassification(row)" mat-icon-button
+                                    aria-label="Example icon button with a vertical three dot icon">
+                                    <mat-icon style="color: gray;">edit</mat-icon>
+                                </button>
+                                <button (click)="deleteClassification(row)" mat-icon-button
+                                    aria-label="Example icon button with a vertical three dot icon">
+                                    <mat-icon style="color: gray;">delete</mat-icon>
+                                </button>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="classificationsColumns"></tr>
+                        <tr mat-row *matRowDef="let row; columns: classificationsColumns;"></tr>
+                    </table>
+                    <mat-paginator [pageSizeOptions]="[10, 25, 50]" (page)="handlePageEventClassifications($event)"
+                        [pageIndex]="pageIndexClassifications" [length]="lengthClassifications"
+                        [pageSize]="pageSizeClassifications" [showFirstLastButtons]="true"></mat-paginator>
+                </div>
+            </div>
+            <div *ngIf="page == 'participants' && selectedProject != null" class="page">
+                <h1>Participantes</h1>
+                <h3>Nota: Cambiar clasificaciones, criterios o número de mínimo de clasificaciones libres obligatorias
+                    invalidará los resultados anteriormente generados.</h3>
+                <button mat-raised-button color="primary" (click)="downloadCSV()">Descargar Resultados (CSV)</button>
+                <button mat-raised-button color="primary" style="margin-left: 1rem;"
+                    (click)="downloadLabeledCSV()">Descargar Resultados Etiquetados (CSV)</button>
+                <button mat-raised-button color="primary" style="margin-left: 1rem;"
+                    (click)="downloadParticipants()">Descargar Participantes (XLSX)</button> <br><br>
+                <div class="mat-elevation-z8">
+                    <table mat-table [dataSource]="participantsDataSource" matSort>
+                        <ng-container matColumnDef="fullName">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="16%"> Nombre completo </th>
+                            <td mat-cell *matCellDef="let row"> {{row.fullName}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="age">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="16%"> Edad </th>
+                            <td mat-cell *matCellDef="let row"> {{row.age}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="gender">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="16%"> Género </th>
+                            <td mat-cell *matCellDef="let row"> {{row.gender}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="socialClass">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="16%"> Estrato </th>
+                            <td mat-cell *matCellDef="let row"> {{row.socialLevel}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="educationalLevel">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="16%"> Nivel educativo </th>
+                            <td mat-cell *matCellDef="let row"> {{row.educationalLevel}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="surveyDate">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header width="16%"> Fecha de creación </th>
+                            <td mat-cell *matCellDef="let row"> {{formatDate(row.surveyDate)}} </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="participantsColumns"></tr>
+                        <tr mat-row *matRowDef="let row; columns: participantsColumns;"></tr>
+                    </table>
+                    <mat-paginator [pageSizeOptions]="[10, 25, 50]" (page)="handlePageEventParticipants($event)"
+                        [pageIndex]="pageIndexParticipants" [length]="lengthParticipants"
+                        [pageSize]="pageSizeParticipants" [showFirstLastButtons]="true"></mat-paginator>
+                </div>
+            </div>
+            <div *ngIf="page == 'parameters' && projectLoaded && selectedProject != null" class="page">
+                <h1>Configuración</h1>
+                <h3>Nombre del proyecto</h3>
+                <mat-form-field style="width: auto;">
+                    <input matInput [(ngModel)]="project.name">
+                </mat-form-field>
+                <br>
+                <h3>Número mínimo de clasificaciones libres obligatorias</h3>
+                <mat-form-field style="width: auto;">
+                    <input matInput type="number" [(ngModel)]="project.minOpenQuestionsCnt">
+                </mat-form-field>
+                <br>
+                <h3>Texto introducción (Aparecerá cuando el participante ingresa al enlace)</h3>
+                <mat-form-field style="width: 50%;">
+                    <mat-label>Texto introducción</mat-label>
+                    <textarea matInput [(ngModel)]="project.introductionText" cdkTextareaAutosize
+                        #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="1" cdkAutosizeMaxRows="15"></textarea>
+                </mat-form-field>
+                <br>
+                <h3>Texto final (Aparecerá cuando el participante finalice las clasificaciones)</h3>
+                <mat-form-field style="width: 50%;">
+                    <mat-label>Texto final</mat-label>
+                    <textarea matInput [(ngModel)]="project.endingText" cdkTextareaAutosize
+                        #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="1" cdkAutosizeMaxRows="15"></textarea>
+                </mat-form-field>
+                <br>
+                <button mat-flat-button color="primary" (click)="updateParameters()">Actualizar</button> <br><br>
+                <button mat-raised-button color="primary" (click)="linkUser()">Vincular usuario</button> 
+                <button mat-raised-button color="primary"  style="margin-left: 1rem;" (click)="unlinkUser()">Desvincular usuario</button>
+                <button mat-raised-button color="primary"  style="margin-left: 1rem;" (click)="unlinkMe()">Desvincularme</button> <br><br>
+                <button mat-raised-button color="primary" (click)="deleteResults()">Eliminar resultados</button>
+                <button mat-raised-button color="primary" style="margin-left: 1rem;" (click)="deleteProject()">Eliminar
+                    proyecto</button> <br><br>
+            </div>
+            <div *ngIf="page == 'user'" class="page">
+                <h1>Usuario</h1>
+                <h3>Nombre completo</h3>
+                <mat-form-field style="width: auto;">
+                    <input matInput [(ngModel)]="newUser.fullName">
+                </mat-form-field>
+                <br>
+                <h3>Nombre de usuario</h3>
+                <mat-form-field style="width: auto;">
+                    <input matInput [(ngModel)]="newUser.username">
+                </mat-form-field>
+                <br>
+                <button mat-flat-button color="primary" (click)="updateUser()">Guardar</button> <br><br>
+                <button mat-flat-button color="primary" (click)="changePassword()">Cambiar contraseña</button> <br><br>
+                <button mat-raised-button color="primary" (click)="deleteUser()">Eliminar usuario</button> <br><br>
+            </div>
+        </div>
+
+    </mat-drawer-container>
+</div>

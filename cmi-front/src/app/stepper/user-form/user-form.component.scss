@@ -1,0 +1,30 @@
+.grid-container {
+  display: grid;
+  grid-template-columns: 45% 55%;
+  width: 100%;
+  margin-top: 3rem;
+  gap: 1rem;
+}
+
+.form-field {
+  width: 50%;
+}
+
+.form-column {
+  text-align: center;
+}
+
+.info-text {
+  font-size: 13pt;
+  text-justify: inter-word;
+  text-align: justify;
+}
+
+@media (max-width: 800px) {
+  .grid-container {
+    grid-template-columns: repeat(1, 1fr);
+  }
+  .form-field {
+    width: 100%;
+  }
+}

@@ -1,0 +1,63 @@
+<div cdkDropListGroup class="container">
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr);">
+    <div>
+      <h2>{{!finished ? 'Clasificación ' + classificationStageLabel: 'Ejercicio completado'}} </h2>
+      <mat-progress-bar style="width: 70%;" mode="determinate" value={{stagePercentage}}></mat-progress-bar>
+      <h3 style="font-weight: 500; margin-top: 2em;" *ngIf="indicationLabel">{{indicationLabel}}</h3>
+    </div>
+    <div style="width: 100%; text-align: center; display: flex; justify-content: center;">
+      <mat-form-field appearance="outline" class="form-field" style="display: block; width: 60%;">
+        <mat-label>Criterio</mat-label>
+        <input [disabled]="closedQuestions" matInput [(ngModel)]="classificationInput">
+      </mat-form-field>
+    </div>
+    <div style="width: 100%; text-align: right;">
+      <button (click)="nextStage()" style="margin-left: 2rem;" mat-flat-button
+        color="primary">{{!(allClassificationsCreated) ? "Guardar clasificación" : "Finalizar"}}</button>
+      <button (click)="disableStopProgress()" *ngIf="stopProgress" style="margin-left: 2rem;" mat-flat-button
+        color="primary">Segunda fase</button>
+    </div>
+  </div>
+  <br>
+  <div style="display: grid; grid-template-columns: 20% 80%;">
+    <div>
+      <div style="text-align: center; width: 100%;">
+        <mat-form-field appearance="outline" class="form-field">
+          <mat-label>Categoría</mat-label>
+          <input [disabled]="closedQuestions" matInput [(ngModel)]="categoryInput">
+        </mat-form-field>
+        <br>
+        <button (click)="addCategory()" [disabled]="closedQuestions" mat-flat-button color="primary">Añadir</button>
+      </div>
+    </div>
+    <div cdkDropList [cdkDropListData]="namedCards" class="horizontal-drag-drop-list"
+      (cdkDropListDropped)="drop($event)">
+      <div class="horizontal-drag-drop-item" *ngFor="let item of namedCards" cdkDrag>
+        <span *ngIf="!getCard(item)?.onlyShowImage">{{item}}</span>
+        <div *ngIf="getCard(item)?.files![0]" style="width: 100%; text-align: center;">
+          <br *ngIf="!getCard(item)?.onlyShowImage">
+          <img (click)="toggleMaximize(getCard(item)?.files![0])" style="height: 6rem; border-radius: 4px;" src={{getCard(item)?.files![0]}} />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(5, 19%); column-gap: 1rem; margin-top: 1rem;">
+    <div class="example-container" *ngFor="let category of categories" cdkDrag>
+      <div style="display: grid; grid-template-columns: auto 20%;">
+        <h2>{{category.name}}</h2>
+        <button style="top: -10px;" mat-icon-button *ngIf="!closedQuestions" (click)="removeCategory(category)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+      <div cdkDropList [cdkDropListData]="category.cards" class="example-list" (cdkDropListDropped)="drop($event)">
+        <div class="example-box" *ngFor="let item of category.cards" cdkDrag style="display: block;">
+          <span *ngIf="!getCard(item)?.onlyShowImage">{{item}}</span>
+          <div *ngIf="getCard(item)?.files![0]" style="width: 100%; text-align: center;">
+            <br *ngIf="!getCard(item)?.onlyShowImage">
+            <img style="height: 6rem; border-radius: 4px;" src={{getCard(item)?.files![0]}} />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
