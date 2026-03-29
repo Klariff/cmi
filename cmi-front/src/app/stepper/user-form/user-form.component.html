@@ -133,8 +133,8 @@
             </div>
             <div class="grid-item" *ngIf="showArea">
                 <mat-form-field appearance="outline" class="form-field">
-                    <mat-label>Área</mat-label>
-                    <input #areaInput type="text" placeholder="Seleccione una área" matInput
+                    <mat-label>Localidad</mat-label>
+                    <input #areaInput type="text" placeholder="Seleccione una localidad" matInput
                         [formControl]="$any(userForm).controls['area']" [matAutocomplete]="areaSelect"
                         (input)="filterAreas()" (focus)="filterAreas()">
                     <mat-autocomplete requireSelection
@@ -143,7 +143,7 @@
                             {{ area }}
                         </mat-option>
                     </mat-autocomplete>
-                    <mat-error *ngIf="!userForm.get('area')?.valid">Área inválida</mat-error>
+                    <mat-error *ngIf="!userForm.get('area')?.valid">Localidad inválida</mat-error>
                 </mat-form-field>
             </div>
             <div class="grid-item">
