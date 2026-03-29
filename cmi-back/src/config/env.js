@@ -17,8 +17,6 @@ const envVarsSchema = Joi.object()
     JWT_SECRET: Joi.string().required().description('JWT secret'),
     MONGODB_URI: Joi.string().required().description('Mongo DB url'),
     BUCKETS: Joi.string().required().description('Buckets'),
-    LOCATIONS_API_URL: Joi.string().required().description('Locations API URL'),
-    LOCATIONS_API_USER: Joi.string().required().description('Locations API user'),
 })
 .unknown();
 
@@ -51,8 +49,4 @@ module.exports = {
         sender: envVars.EMAIL_SENDER,
         admin: envVars.EMAIL_ADMIN,
     },
-    locations: {
-        url: envVars.LOCATIONS_API_URL,
-        user: envVars.LOCATIONS_API_USER,
-    }
 }

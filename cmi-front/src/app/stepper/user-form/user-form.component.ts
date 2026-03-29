@@ -1,8 +1,7 @@
-import { HttpClient } from '@angular/common/http';
 import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
-import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { environment } from 'src/environments/environment';
+import { COLOMBIA_GEO_DATA } from 'src/app/utils/constants/colombia-geo-data';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -18,22 +17,19 @@ export class UserFormComponent implements OnInit {
   @Input() introductionText: string = "";
   userForm: FormGroup;
   formAttempt: boolean = false;
-  countries: any[] = [];
-  countriesNames: any[] = [];
-  regions: any[] = [];
-  regionsNames: any[] = [];
-  cities: any[] = [];
-  citiesNames: any[] = [];
-  areas: any[] = [];
-  areasNames: any[] = [];
-  filteredCountries: any[] = [];
-  filteredRegions: any[] = [];
-  filteredCities: any[] = [];
-  filteredAreas: any[] = [];
+  showArea: boolean = false;
+
+  countriesNames: string[] = [COLOMBIA_GEO_DATA.country];
+  regionsNames: string[] = [];
+  citiesNames: string[] = [];
+  areasNames: string[] = [];
+  filteredCountries: string[] = [];
+  filteredRegions: string[] = [];
+  filteredCities: string[] = [];
+  filteredAreas: string[] = [];
 
   constructor(
     private formBuilder: FormBuilder,
-    private httpClient: HttpClient,
     private route: ActivatedRoute
   ) {
     this.userForm = this.formBuilder.group({
@@ -45,7 +41,7 @@ export class UserFormComponent implements OnInit {
       country: ['', Validators.required],
       region: ['', Validators.required],
       city: ['', Validators.required],
-      area: ['', Validators.required],
+      area: [''],
       observations: [''],
       dataAgreement: [false, Validators.requiredTrue],
       formConsent: [false, Validators.requiredTrue],
@@ -53,22 +49,10 @@ export class UserFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    Swal.fire({ title: "Cargando...", allowOutsideClick: false });
-    Swal.showLoading();
-    this.httpClient.get(`${environment.baseURL}get/countries`).subscribe({
-      next: (response: any) => {
-        this.countries = response
-        this.countriesNames = response.map((country: any) => country.countryName);
-        this.filteredCountries = this.countriesNames.slice();
-        Swal.close();
-        if (!this.route.snapshot.queryParamMap.get("projectId")) {
-          Swal.fire({ title: "Proyecto no encontrado", text: "No se ha encontrado el proyecto al que intenta acceder", icon: "error", allowOutsideClick: false, showCancelButton: false, showConfirmButton: false })
-        }
-      },
-      error: (error: any) => {
-        Swal.fire({ title: "Error interno de servidor", text: "Por favor contacte con el administrador", icon: "error", allowOutsideClick: false, showCancelButton: false, showConfirmButton: false })
-      }
-    })
+    this.filteredCountries = this.countriesNames.slice();
+    if (!this.route.snapshot.queryParamMap.get("projectId")) {
+      Swal.fire({ title: "Proyecto no encontrado", text: "No se ha encontrado el proyecto al que intenta acceder", icon: "error", allowOutsideClick: false, showCancelButton: false, showConfirmButton: false });
+    }
   }
 
   filterCountries(): void {
@@ -99,76 +83,54 @@ export class UserFormComponent implements OnInit {
     }
   }
 
-  countrySelectionChange(name: any) {
-    Swal.fire({ title: "Cargando...", allowOutsideClick: false });
-    Swal.showLoading();
+  countrySelectionChange(name: string) {
     this.userForm.get("region")?.setValue("");
     this.userForm.get("city")?.setValue("");
     this.userForm.get("area")?.setValue("");
-    this.regions = [];
-    this.cities = [];
-    this.areas = [];
-    let country = this.countries.find(country => country.countryName == name)
-    this.httpClient.get(`${environment.baseURL}get/hierarchy?geonameId=${country.geonameId}`).subscribe({
-      next: (response: any) => {
-        this.regions = response
-        this.regionsNames = response.map((region: any) => region.name);
-        this.regionsNames = this.regionsNames.map((region: any) => region.replace("Departamento de ", "").replace("Department of ", "").replace("Departamento del ", "").replace(" Department", ""))
-        this.regionsNames = this.regionsNames.sort()
-        this.regionsNames = [...this.regionsNames, "N/A"]
-        this.filteredRegions = this.regionsNames.slice();
-        Swal.close();
-      }
-    })
+    this.showArea = false;
+    this.userForm.get("area")?.clearValidators();
+    this.userForm.get("area")?.updateValueAndValidity();
+
+    const dept = COLOMBIA_GEO_DATA.departments.map(d => d.name);
+    this.regionsNames = [...dept, 'N/A'];
+    this.filteredRegions = this.regionsNames.slice();
+    this.citiesNames = [];
+    this.areasNames = [];
   }
 
-  regionSelectionChange(name: any) {
-    Swal.fire({ title: "Cargando...", allowOutsideClick: false });
-    Swal.showLoading();
+  regionSelectionChange(name: string) {
     this.userForm.get("city")?.setValue("");
     this.userForm.get("area")?.setValue("");
-    this.cities = [];
-    this.areas = [];
+    this.showArea = false;
+    this.userForm.get("area")?.clearValidators();
+    this.userForm.get("area")?.updateValueAndValidity();
+
     if (name === "N/A") {
       this.citiesNames = ["N/A"];
       this.filteredCities = this.citiesNames.slice();
-      Swal.close();
       return;
-    } else {
-      let region = this.regions.find(region => region.name.replace("Departamento de ", "").replace("Department of ", "").replace("Departamento del ", "").replace(" Department", "") == name)
-      this.httpClient.get(`${environment.baseURL}get/hierarchy?geonameId=${region.geonameId}`).subscribe({
-        next: (response: any) => {
-          this.cities = response
-          this.citiesNames = response.map((city: any) => city.name);
-          this.citiesNames = [...this.citiesNames, "N/A"]
-          this.filteredCities = this.citiesNames.slice();
-          Swal.close();
-        }
-      })
     }
+
+    const dept = COLOMBIA_GEO_DATA.departments.find(d => d.name === name);
+    this.citiesNames = dept ? dept.cities : ["N/A"];
+    this.filteredCities = this.citiesNames.slice();
+    this.areasNames = [];
   }
 
-  citySelectionChange(name: any) {
-    Swal.fire({ title: "Cargando...", allowOutsideClick: false });
-    Swal.showLoading();
+  citySelectionChange(name: string) {
     this.userForm.get("area")?.setValue("");
-    this.areas = [];
-    if (name === "N/A") {
-      this.areasNames = ["N/A"];
+
+    if (name === "Bogotá") {
+      this.showArea = true;
+      this.userForm.get("area")?.setValidators(Validators.required);
+      this.userForm.get("area")?.updateValueAndValidity();
+      this.areasNames = COLOMBIA_GEO_DATA.bogotaAreas.slice();
       this.filteredAreas = this.areasNames.slice();
-      Swal.close();
-      return;
+    } else {
+      this.showArea = false;
+      this.userForm.get("area")?.clearValidators();
+      this.userForm.get("area")?.updateValueAndValidity();
+      this.areasNames = [];
     }
-    let city = this.cities.find(city => city.name == name)
-    this.httpClient.get(`${environment.baseURL}get/hierarchy?geonameId=${city.geonameId}`).subscribe({
-      next: (response: any) => {
-        this.areas = response
-        this.areasNames = response.map((area: any) => area.name);
-        this.areasNames = this.areasNames.filter(area => area !== "Bogotá");
-        this.areasNames = [...this.areasNames, "N/A"];
-        this.filteredAreas = this.areasNames.slice();
-        Swal.close();
-      }
-    })
   }
 }

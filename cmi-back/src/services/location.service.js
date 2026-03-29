@@ -1,13 +1,20 @@
-const fetch = require('node-fetch');
-const env = require('../config/env.js');
+const geoData = require('../config/geo-data.js');
 
 module.exports = {
-    getCountries: async () => {
-        let response = await fetch(`${env.locations.url}/countryInfoJSON?username=${env.locations.user}`);
-        return await response.json();
+    getCountries: () => {
+        return [{ name: geoData.country }];
     },
-    getHierarchy: async (geonameId) => {
-        let response = await fetch(`${env.locations.url}/childrenJSON?geonameId=${geonameId}&username=${env.locations.user}`);
-        return await response.json();
+    getDepartments: () => {
+        return geoData.departments.map(d => ({ name: d.name }));
+    },
+    getCities: (department) => {
+        const dept = geoData.departments.find(d => d.name === department);
+        return dept ? dept.cities.map(c => ({ name: c })) : [];
+    },
+    getAreas: (city) => {
+        if (city === 'Bogotá') {
+            return geoData.bogotaAreas.map(a => ({ name: a }));
+        }
+        return [];
     }
-}
+};

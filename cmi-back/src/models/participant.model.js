@@ -11,7 +11,7 @@ const ParticipantSchema = mongoose.Schema({
     country: { type: String, required: [true, "País es requerido"] },
     region: { type: String, required: [true, "Región es requerida"] },
     city: { type: String, required: [true, "Ciudad es requerida"] },
-    area: { type: String, required: [true, "Area es requerida"] },
+    area: { type: String },
     observations: { type: String },
     deleted: { type: Boolean, default: false },
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
