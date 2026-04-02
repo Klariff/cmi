@@ -1,7 +1,7 @@
 export const environment = {
     production: false,
-    baseURL: "https://cmi-back.klariff.com/api/",
-    rootURL: "https://cmi-front.klariff.com/",
+    baseURL: "/api/",
+    rootURL: "/",
     shortcutExcercise: false,
     showInitialDialog: true
 };
