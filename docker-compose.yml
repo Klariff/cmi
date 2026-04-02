@@ -32,6 +32,10 @@ services:
       - "27017:27017"
     volumes:
       - ./cmi-db:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: cmi
+      MONGO_INITDB_DATABASE: CMI
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok"]

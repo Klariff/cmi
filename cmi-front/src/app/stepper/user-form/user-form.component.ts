@@ -1,7 +1,8 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, ElementRef, Input, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { COLOMBIA_GEO_DATA } from 'src/app/utils/constants/colombia-geo-data';
+import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -19,17 +20,18 @@ export class UserFormComponent implements OnInit {
   formAttempt: boolean = false;
   showArea: boolean = false;
 
-  countriesNames: string[] = [COLOMBIA_GEO_DATA.country];
-  regionsNames: string[] = [];
-  citiesNames: string[] = [];
-  areasNames: string[] = [];
-  filteredCountries: string[] = [];
-  filteredRegions: string[] = [];
-  filteredCities: string[] = [];
-  filteredAreas: string[] = [];
+  allCountries: any[] = [];
+  allDepartments: any[] = [];
+  allCities: any[] = [];
+  allAreas: any[] = [];
+  filteredCountries: any[] = [];
+  filteredDepartments: any[] = [];
+  filteredCities: any[] = [];
+  filteredAreas: any[] = [];
 
   constructor(
     private formBuilder: FormBuilder,
+    private httpClient: HttpClient,
     private route: ActivatedRoute
   ) {
     this.userForm = this.formBuilder.group({
@@ -38,10 +40,10 @@ export class UserFormComponent implements OnInit {
       gender: ['', Validators.required],
       socialLevel: ['', [Validators.required]],
       educationalLevel: ['', Validators.required],
-      country: ['', Validators.required],
-      region: ['', Validators.required],
-      city: ['', Validators.required],
-      area: [''],
+      countryId: ['', Validators.required],
+      departmentId: ['', Validators.required],
+      cityId: ['', Validators.required],
+      areaId: [''],
       observations: [''],
       dataAgreement: [false, Validators.requiredTrue],
       formConsent: [false, Validators.requiredTrue],
@@ -49,88 +51,116 @@ export class UserFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.filteredCountries = this.countriesNames.slice();
-    if (!this.route.snapshot.queryParamMap.get("projectId")) {
-      Swal.fire({ title: "Proyecto no encontrado", text: "No se ha encontrado el proyecto al que intenta acceder", icon: "error", allowOutsideClick: false, showCancelButton: false, showConfirmButton: false });
-    }
+    Swal.fire({ title: "Cargando...", allowOutsideClick: false });
+    Swal.showLoading();
+    this.httpClient.get(`${environment.baseURL}get/countries`).subscribe({
+      next: (response: any) => {
+        this.allCountries = response;
+        this.filteredCountries = response.slice();
+        Swal.close();
+        if (!this.route.snapshot.queryParamMap.get("projectId")) {
+          Swal.fire({ title: "Proyecto no encontrado", text: "No se ha encontrado el proyecto al que intenta acceder", icon: "error", allowOutsideClick: false, showCancelButton: false, showConfirmButton: false });
+        }
+      },
+      error: () => {
+        Swal.fire({ title: "Error interno de servidor", text: "Por favor contacte con el administrador", icon: "error", allowOutsideClick: false, showCancelButton: false, showConfirmButton: false });
+      }
+    });
   }
+
+  displayName = (item: any): string => item?.name || '';
 
   filterCountries(): void {
-    if (this.countryInput && this.countryInput.nativeElement) {
-      const filterValue = this.countryInput.nativeElement.value.toLowerCase();
-      this.filteredCountries = this.countriesNames.filter(o => o.toLowerCase().includes(filterValue));
+    if (this.countryInput?.nativeElement) {
+      const val = this.countryInput.nativeElement.value.toLowerCase();
+      this.filteredCountries = this.allCountries.filter(o => o.name.toLowerCase().includes(val));
     }
   }
 
-  filterRegions(): void {
-    if (this.regionInput && this.regionInput.nativeElement) {
-      const filterValue = this.regionInput.nativeElement.value.toLowerCase();
-      this.filteredRegions = this.regionsNames.filter(o => o.toLowerCase().includes(filterValue));
+  filterDepartments(): void {
+    if (this.regionInput?.nativeElement) {
+      const val = this.regionInput.nativeElement.value.toLowerCase();
+      this.filteredDepartments = this.allDepartments.filter(o => o.name.toLowerCase().includes(val));
     }
   }
 
   filterCities(): void {
-    if (this.cityInput && this.cityInput.nativeElement) {
-      const filterValue = this.cityInput.nativeElement.value.toLowerCase();
-      this.filteredCities = this.citiesNames.filter(o => o.toLowerCase().includes(filterValue));
+    if (this.cityInput?.nativeElement) {
+      const val = this.cityInput.nativeElement.value.toLowerCase();
+      this.filteredCities = this.allCities.filter(o => o.name.toLowerCase().includes(val));
     }
   }
 
   filterAreas(): void {
-    if (this.areaInput && this.areaInput.nativeElement) {
-      const filterValue = this.areaInput.nativeElement.value.toLowerCase();
-      this.filteredAreas = this.areasNames.filter(o => o.toLowerCase().includes(filterValue));
+    if (this.areaInput?.nativeElement) {
+      const val = this.areaInput.nativeElement.value.toLowerCase();
+      this.filteredAreas = this.allAreas.filter(o => o.name.toLowerCase().includes(val));
     }
   }
 
-  countrySelectionChange(name: string) {
-    this.userForm.get("region")?.setValue("");
-    this.userForm.get("city")?.setValue("");
-    this.userForm.get("area")?.setValue("");
+  countrySelectionChange(item: any) {
+    this.userForm.get("departmentId")?.setValue('');
+    this.userForm.get("cityId")?.setValue('');
+    this.userForm.get("areaId")?.setValue('');
+    this.allDepartments = [];
+    this.allCities = [];
+    this.allAreas = [];
     this.showArea = false;
-    this.userForm.get("area")?.clearValidators();
-    this.userForm.get("area")?.updateValueAndValidity();
+    this.userForm.get("areaId")?.clearValidators();
+    this.userForm.get("areaId")?.updateValueAndValidity();
 
-    const dept = COLOMBIA_GEO_DATA.departments.map(d => d.name);
-    this.regionsNames = [...dept, 'N/A'];
-    this.filteredRegions = this.regionsNames.slice();
-    this.citiesNames = [];
-    this.areasNames = [];
+    Swal.fire({ title: "Cargando...", allowOutsideClick: false });
+    Swal.showLoading();
+    this.httpClient.get(`${environment.baseURL}get/departments?countryId=${item._id}`).subscribe({
+      next: (response: any) => {
+        this.allDepartments = response;
+        this.filteredDepartments = response.slice();
+        Swal.close();
+      }
+    });
   }
 
-  regionSelectionChange(name: string) {
-    this.userForm.get("city")?.setValue("");
-    this.userForm.get("area")?.setValue("");
+  regionSelectionChange(item: any) {
+    this.userForm.get("cityId")?.setValue('');
+    this.userForm.get("areaId")?.setValue('');
+    this.allCities = [];
+    this.allAreas = [];
     this.showArea = false;
-    this.userForm.get("area")?.clearValidators();
-    this.userForm.get("area")?.updateValueAndValidity();
+    this.userForm.get("areaId")?.clearValidators();
+    this.userForm.get("areaId")?.updateValueAndValidity();
 
-    if (name === "N/A") {
-      this.citiesNames = ["N/A"];
-      this.filteredCities = this.citiesNames.slice();
-      return;
-    }
-
-    const dept = COLOMBIA_GEO_DATA.departments.find(d => d.name === name);
-    this.citiesNames = dept ? dept.cities : ["N/A"];
-    this.filteredCities = this.citiesNames.slice();
-    this.areasNames = [];
+    Swal.fire({ title: "Cargando...", allowOutsideClick: false });
+    Swal.showLoading();
+    this.httpClient.get(`${environment.baseURL}get/cities?departmentId=${item._id}`).subscribe({
+      next: (response: any) => {
+        this.allCities = response;
+        this.filteredCities = response.slice();
+        Swal.close();
+      }
+    });
   }
 
-  citySelectionChange(name: string) {
-    this.userForm.get("area")?.setValue("");
+  citySelectionChange(item: any) {
+    this.userForm.get("areaId")?.setValue('');
+    this.allAreas = [];
 
-    if (name === "Bogotá") {
-      this.showArea = true;
-      this.userForm.get("area")?.setValidators(Validators.required);
-      this.userForm.get("area")?.updateValueAndValidity();
-      this.areasNames = COLOMBIA_GEO_DATA.bogotaAreas.slice();
-      this.filteredAreas = this.areasNames.slice();
+    if (item.name === 'Bogotá') {
+      Swal.fire({ title: "Cargando...", allowOutsideClick: false });
+      Swal.showLoading();
+      this.httpClient.get(`${environment.baseURL}get/areas?cityId=${item._id}`).subscribe({
+        next: (response: any) => {
+          this.allAreas = response;
+          this.filteredAreas = response.slice();
+          this.showArea = true;
+          this.userForm.get("areaId")?.setValidators(Validators.required);
+          this.userForm.get("areaId")?.updateValueAndValidity();
+          Swal.close();
+        }
+      });
     } else {
       this.showArea = false;
-      this.userForm.get("area")?.clearValidators();
-      this.userForm.get("area")?.updateValueAndValidity();
-      this.areasNames = [];
+      this.userForm.get("areaId")?.clearValidators();
+      this.userForm.get("areaId")?.updateValueAndValidity();
     }
   }
 }

@@ -90,60 +90,60 @@
                 <mat-form-field appearance="outline" class="form-field">
                     <mat-label>País</mat-label>
                     <input #countryInput type="text" placeholder="Seleccione un país" matInput
-                        [formControl]="$any(userForm).controls['country']" [matAutocomplete]="countrySelect"
+                        [formControl]="$any(userForm).controls['countryId']" [matAutocomplete]="countrySelect"
                         (input)="filterCountries()" (focus)="filterCountries()">
-                    <mat-autocomplete (optionSelected)='countrySelectionChange($event.option.value)' requireSelection
+                    <mat-autocomplete [displayWith]="displayName" (optionSelected)='countrySelectionChange($event.option.value)' requireSelection
                         #countrySelect="matAutocomplete">
                         <mat-option *ngFor="let country of filteredCountries" [value]="country">
-                            {{ country }}
+                            {{ country.name }}
                         </mat-option>
                     </mat-autocomplete>
-                    <mat-error *ngIf="!userForm.get('country')?.valid">País inválido</mat-error>
+                    <mat-error *ngIf="!userForm.get('countryId')?.valid">País inválido</mat-error>
                 </mat-form-field>
             </div>
             <div class="grid-item">
                 <mat-form-field appearance="outline" class="form-field">
-                    <mat-label>Región</mat-label>
-                    <input #regionInput type="text" placeholder="Seleccione una región" matInput
-                        [formControl]="$any(userForm).controls['region']" [matAutocomplete]="regionSelect"
-                        (input)="filterRegions()" (focus)="filterRegions()">
-                    <mat-autocomplete (optionSelected)='regionSelectionChange($event.option.value)' requireSelection
+                    <mat-label>Departamento</mat-label>
+                    <input #regionInput type="text" placeholder="Seleccione un departamento" matInput
+                        [formControl]="$any(userForm).controls['departmentId']" [matAutocomplete]="regionSelect"
+                        (input)="filterDepartments()" (focus)="filterDepartments()">
+                    <mat-autocomplete [displayWith]="displayName" (optionSelected)='regionSelectionChange($event.option.value)' requireSelection
                         #regionSelect="matAutocomplete">
-                        <mat-option *ngFor="let region of filteredRegions" [value]="region">
-                            {{ region }}
+                        <mat-option *ngFor="let dept of filteredDepartments" [value]="dept">
+                            {{ dept.name }}
                         </mat-option>
                     </mat-autocomplete>
-                    <mat-error *ngIf="!userForm.get('region')?.valid">Región inválida</mat-error>
+                    <mat-error *ngIf="!userForm.get('departmentId')?.valid">Departamento inválido</mat-error>
                 </mat-form-field>
             </div>
             <div class="grid-item">
                 <mat-form-field appearance="outline" class="form-field">
                     <mat-label>Ciudad</mat-label>
                     <input #cityInput type="text" placeholder="Seleccione una ciudad" matInput
-                        [formControl]="$any(userForm).controls['city']" [matAutocomplete]="citySelect"
+                        [formControl]="$any(userForm).controls['cityId']" [matAutocomplete]="citySelect"
                         (input)="filterCities()" (focus)="filterCities()">
-                    <mat-autocomplete (optionSelected)='citySelectionChange($event.option.value)' requireSelection
+                    <mat-autocomplete [displayWith]="displayName" (optionSelected)='citySelectionChange($event.option.value)' requireSelection
                         #citySelect="matAutocomplete">
                         <mat-option *ngFor="let city of filteredCities" [value]="city">
-                            {{ city }}
+                            {{ city.name }}
                         </mat-option>
                     </mat-autocomplete>
-                    <mat-error *ngIf="!userForm.get('city')?.valid">Ciudad inválida</mat-error>
+                    <mat-error *ngIf="!userForm.get('cityId')?.valid">Ciudad inválida</mat-error>
                 </mat-form-field>
             </div>
             <div class="grid-item" *ngIf="showArea">
                 <mat-form-field appearance="outline" class="form-field">
                     <mat-label>Localidad</mat-label>
                     <input #areaInput type="text" placeholder="Seleccione una localidad" matInput
-                        [formControl]="$any(userForm).controls['area']" [matAutocomplete]="areaSelect"
+                        [formControl]="$any(userForm).controls['areaId']" [matAutocomplete]="areaSelect"
                         (input)="filterAreas()" (focus)="filterAreas()">
-                    <mat-autocomplete requireSelection
+                    <mat-autocomplete [displayWith]="displayName" requireSelection
                         #areaSelect="matAutocomplete">
                         <mat-option *ngFor="let area of filteredAreas" [value]="area">
-                            {{ area }}
+                            {{ area.name }}
                         </mat-option>
                     </mat-autocomplete>
-                    <mat-error *ngIf="!userForm.get('area')?.valid">Localidad inválida</mat-error>
+                    <mat-error *ngIf="!userForm.get('areaId')?.valid">Localidad inválida</mat-error>
                 </mat-form-field>
             </div>
             <div class="grid-item">

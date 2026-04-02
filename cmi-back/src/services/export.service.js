@@ -294,7 +294,12 @@ module.exports = {
                     fs.unlinkSync(filePath);
                 }
 
-                let participants = await participantModel.find({ projectId: new mongoose.Types.ObjectId(projectId), deleted: false });
+                let participants = await participantModel
+                    .find({ projectId: new mongoose.Types.ObjectId(projectId), deleted: false })
+                    .populate('countryId', 'name')
+                    .populate('departmentId', 'name')
+                    .populate('cityId', 'name')
+                    .populate('areaId', 'name');
 
                 let headers = [
                     { newName: "ID Participante", oldName: "_id" },
@@ -303,10 +308,10 @@ module.exports = {
                     { newName: "Género", oldName: "gender" },
                     { newName: "Estrato", oldName: "socialLevel" },
                     { newName: "Titulo obtenido", oldName: "educationalLevel" },
-                    { newName: "País", oldName: "country" },
-                    { newName: "Región", oldName: "region" },
-                    { newName: "Ciudad", oldName: "city" },
-                    { newName: "Área", oldName: "area" },
+                    { newName: "País", oldName: "countryId", transform: (v) => v?.name || '' },
+                    { newName: "Región", oldName: "departmentId", transform: (v) => v?.name || '' },
+                    { newName: "Ciudad", oldName: "cityId", transform: (v) => v?.name || '' },
+                    { newName: "Área", oldName: "areaId", transform: (v) => v?.name || '' },
                     { newName: "Observaciones", oldName: "observations" },
                     { newName: "ID Proyecto", oldName: "projectId" },
                     { newName: "Fecha de envío", oldName: "surveyDate" },
@@ -324,7 +329,7 @@ module.exports = {
                         }
                         let newTitle = headers.find(header => header.oldName == attribute);
                         if (newTitle) {
-                            participant[newTitle.newName] = participant[attribute];
+                            participant[newTitle.newName] = newTitle.transform ? newTitle.transform(participant[attribute]) : participant[attribute];
                             delete participant[attribute];
                         } else {
                             delete participant[attribute];

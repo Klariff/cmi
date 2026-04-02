@@ -20,13 +20,16 @@ mongoose.connect(env.database.uri, { useNewUrlParser: true, useUnifiedTopology: 
     log(null, logging.internalServerError, error.message);
 });
 
-mongoose.connection.once('open', () => {
+mongoose.connection.once('open', async () => {
     global.gfs = {};
     env.database.buckets.forEach(bucket => {
         global.gfs[bucket] = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
             bucketName: bucket
         });
     });
+
+    await require('./services/geo-seed.service')();
+    await require('./services/geo-migration.service')();
 });
 
 if (env.https) {
