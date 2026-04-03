@@ -263,12 +263,12 @@ export class AdminPanelComponent implements OnInit {
   }
 
   copyAccessLinkAdmin(row: any) {
-    navigator.clipboard.writeText(environment.rootURL + '?projectId=' + row._id);
+    navigator.clipboard.writeText(window.location.origin + '/?projectId=' + row._id);
     this.toastr.success('Link copiado');
   }
 
   copyAccessLinkResearcher() {
-    navigator.clipboard.writeText(environment.rootURL + '?projectId=' + sessionStorage.getItem("projectId"));
+    navigator.clipboard.writeText(window.location.origin + '/?projectId=' + sessionStorage.getItem("projectId"));
     this.toastr.success('Link copiado');
   }
 
