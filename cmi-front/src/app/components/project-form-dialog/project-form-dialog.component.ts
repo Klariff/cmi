@@ -44,7 +44,7 @@ export class ProjectFormDialogComponent implements OnInit {
   }
 
   copyAccessLink() {
-    navigator.clipboard.writeText(environment.rootURL + '?projectId=' + this.project._id);
+    navigator.clipboard.writeText(window.location.origin + '/?projectId=' + this.project._id);
     this.toastr.success('Link copiado');
   }
 
