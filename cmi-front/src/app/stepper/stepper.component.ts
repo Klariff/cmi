@@ -12,6 +12,7 @@ import { CardExerciseComponent } from './card-exercise/card-exercise.component';
 import { PlatformLocation } from '@angular/common';
 
 @Component({
+  standalone: false,
   selector: 'app-stepper',
   templateUrl: './stepper.component.html',
   styleUrls: ['./stepper.component.scss']

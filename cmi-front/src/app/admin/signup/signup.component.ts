@@ -4,6 +4,7 @@ import { ToastrService } from 'ngx-toastr';
 import { environment } from 'src/environments/environment';
 
 @Component({
+  standalone: false,
   selector: 'app-signup',
   templateUrl: './signup.component.html',
   styleUrls: ['./signup.component.scss']
@@ -74,6 +75,7 @@ export class SignupComponent implements OnInit {
       this.httpClient.post(`${environment.baseURL}create/user`, { username: this.username, fullName: this.fullName, password: this.password }).subscribe({
         next: (response: any) => {
           sessionStorage.setItem('userId', response.userId);
+          sessionStorage.setItem('token', response.token);
           location.href = '/admin';
         },
         error: (error: any) => {

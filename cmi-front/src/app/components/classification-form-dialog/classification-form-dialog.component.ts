@@ -9,6 +9,7 @@ import { CdkDragDrop, CdkDropList, CdkDrag, moveItemInArray } from '@angular/cdk
 import { forkJoin } from 'rxjs';
 
 @Component({
+  standalone: false,
   selector: 'app-classification-form-dialog',
   templateUrl: './classification-form-dialog.component.html',
   styleUrls: ['./classification-form-dialog.component.scss']

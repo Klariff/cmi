@@ -4,6 +4,7 @@ import { ToastrService } from 'ngx-toastr';
 import { environment } from 'src/environments/environment';
 
 @Component({
+  standalone: false,
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss']
@@ -26,6 +27,7 @@ export class LoginComponent implements OnInit {
       this.httpClient.post(`${environment.baseURL}login`, { username: this.username, password: this.password }).subscribe({
         next: (response: any) => {
           sessionStorage.setItem('userId', response.userId);
+          sessionStorage.setItem('token', response.token);
           location.href = '/admin';
         },
         error: (error: any) => {

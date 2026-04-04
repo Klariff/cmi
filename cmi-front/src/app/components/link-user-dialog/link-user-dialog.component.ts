@@ -7,6 +7,7 @@ import { ToastrService } from 'ngx-toastr';
 import Swal from 'sweetalert2';
 import imageCompression from 'browser-image-compression';
 @Component({
+  standalone: false,
   selector: 'app-link-user-dialog',
   templateUrl: './link-user-dialog.component.html',
   styleUrls: ['./link-user-dialog.component.scss']

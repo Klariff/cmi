@@ -7,6 +7,7 @@ import { ToastrService } from 'ngx-toastr';
 import Swal from 'sweetalert2';
 
 @Component({
+  standalone: false,
   selector: 'app-password-form-dialog',
   templateUrl: './password-form-dialog.component.html',
   styleUrls: ['./password-form-dialog.component.scss']

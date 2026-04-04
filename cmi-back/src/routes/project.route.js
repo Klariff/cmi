@@ -80,91 +80,60 @@ router.patch('/update/project', async (req, res) => {
 })
 
 router.delete('/delete/project', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        let imagesPromises = [];
-        let cardsPromises = [];
-        let categoriesPromises = [];
-        let classificationsPromises = [];
-        let participantsPromises = [];
-        let usersPromises = [];
+        const projectObjectId = new mongoose.Types.ObjectId(req.query.projectId);
 
-        let cards = await cardModel.find({ projectId: new mongoose.Types.ObjectId(req.query.projectId) }).exec();
-        cards.forEach((card) => {
-            if (card.imageId) imagesPromises.push(gfs["card"].delete(new mongoose.Types.ObjectId(card.imageId)));
-            cardsPromises.push(cardModel.deleteOne({ _id: card._id }).exec());
-        })
+        const cards = await cardModel.find({ projectId: projectObjectId }).session(session).exec();
+        const imagesDeletions = cards
+            .filter(card => card.imageId)
+            .map(card => gfs["card"].delete(new mongoose.Types.ObjectId(card.imageId)));
 
-        let categories = await categoryModel.find({ projectId: new mongoose.Types.ObjectId(req.query.projectId) }).exec();
-        categories.forEach((category) => {
-            categoriesPromises.push(categoryModel.deleteOne({ _id: category._id }).exec());
-        })
+        await Promise.all([
+            ...imagesDeletions,
+            cardModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
+            categoryModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
+            classificationModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
+            participantModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
+            projectModel.deleteMany({ _id: req.query.projectId }).session(session).exec(),
+        ]);
 
-        let classifications = await classificationModel.find({ projectId: new mongoose.Types.ObjectId(req.query.projectId) }).exec();
-        classifications.forEach((classification) => {
-            classificationsPromises.push(classificationModel.deleteOne({ _id: classification._id }).exec());
-        })
-
-        let participants = await participantModel.find({ projectId: new mongoose.Types.ObjectId(req.query.projectId) }).exec();
-        participants.forEach((participant) => {
-            participantsPromises.push(participantModel.deleteOne({ _id: participant._id }).exec());
-        })
-
-        /*
-        let users = await userModel.find({ projectId: new mongoose.Types.ObjectId(req.query.projectId) }).exec();
-        users.forEach((user) => {
-            usersPromises.push(userModel.deleteOne({ _id: user._id }).exec());
-        })
-        */
-
-        await Promise.all(imagesPromises);
-        await Promise.all(cardsPromises);
-        await Promise.all(categoriesPromises);
-        await Promise.all(classificationsPromises);
-        await Promise.all(participantsPromises);
-        //await Promise.all(usersPromises);
-        await projectModel.deleteMany({ _id: req.query.projectId }).exec();
-        //await userModel.deleteMany({ projectId: req.query.projectId }).exec();
-
+        await session.commitTransaction();
         return res.json({
             message: "Proyecto eliminado exitosamente",
         });
     } catch (error) {
+        await session.abortTransaction();
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    } finally {
+        session.endSession();
     }
 })
 
 router.delete('/clear/project', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        let categoriesPromises = [];
-        let classificationsPromises = [];
-        let participantsPromises = [];
+        const projectObjectId = new mongoose.Types.ObjectId(req.query.projectId);
 
-        let categories = await categoryModel.find({ projectId: new mongoose.Types.ObjectId(req.query.projectId), static: false }).exec();
-        categories.forEach((category) => {
-            categoriesPromises.push(categoryModel.deleteOne({ _id: category._id }).exec());
-        })
+        await Promise.all([
+            categoryModel.deleteMany({ projectId: projectObjectId, static: false }).session(session).exec(),
+            classificationModel.deleteMany({ projectId: projectObjectId, static: false }).session(session).exec(),
+            participantModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
+        ]);
 
-        let classifications = await classificationModel.find({ projectId: new mongoose.Types.ObjectId(req.query.projectId), static: false }).exec();
-        classifications.forEach((classification) => {
-            classificationsPromises.push(classificationModel.deleteOne({ _id: classification._id }).exec());
-        })
-
-        let participants = await participantModel.find({ projectId: new mongoose.Types.ObjectId(req.query.projectId) }).exec();
-        participants.forEach((participant) => {
-            participantsPromises.push(participantModel.deleteOne({ _id: participant._id }).exec());
-        })
-
-        await Promise.all(categoriesPromises);
-        await Promise.all(classificationsPromises);
-        await Promise.all(participantsPromises);
-
+        await session.commitTransaction();
         return res.json({
             message: "Proyecto depurado exitosamente",
         });
     } catch (error) {
+        await session.abortTransaction();
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    } finally {
+        session.endSession();
     }
 })
 

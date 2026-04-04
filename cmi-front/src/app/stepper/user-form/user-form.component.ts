@@ -6,6 +6,7 @@ import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 
 @Component({
+  standalone: false,
   selector: 'user-form-component',
   templateUrl: './user-form.component.html',
   styleUrls: ['./user-form.component.scss']

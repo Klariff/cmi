@@ -25,6 +25,7 @@ import { PasswordFormDialogComponent } from 'src/app/components/password-form-di
 import { LinkUserDialogComponent } from 'src/app/components/link-user-dialog/link-user-dialog.component';
 
 @Component({
+  standalone: false,
   selector: 'app-admin-panel',
   templateUrl: './admin-panel.component.html',
   styleUrls: ['./admin-panel.component.scss']

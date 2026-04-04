@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-let uniqueValidator = require('mongoose-unique-validator');
 
 const CategorySchema = mongoose.Schema({
     _id: { type: mongoose.Schema.Types.ObjectId, required: true, auto: true },
@@ -13,6 +12,5 @@ const CategorySchema = mongoose.Schema({
     static: { type: Boolean, default: false },
 });
 
-CategorySchema.plugin(uniqueValidator, { message: 'El campo {PATH} ya existe' });
 
 module.exports = mongoose.model('Category', CategorySchema);

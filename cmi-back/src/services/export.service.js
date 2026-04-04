@@ -2,7 +2,7 @@ const participantModel = require('../models/participant.model');
 const cardModel = require('../models/card.model');
 const fs = require('fs');
 const mongoose = require('mongoose');
-const xlsx = require('xlsx');
+const ExcelJS = require('exceljs');
 const { getCountries, getRegions, getCitiesCountry, getCitiesRegion } = require('./location.service');
 
 module.exports = {
@@ -89,6 +89,13 @@ module.exports = {
                         },
                     },
                 ]);
+
+                if (result.length === 0) {
+                    fs.writeFile(filePath, '', (err) => {
+                        if (err) { reject(err); } else { resolve(filePath); }
+                    });
+                    return;
+                }
 
                 let classificationHeaders = [];
                 let lastParticipant = result[0].classifications[0].participantId;
@@ -232,6 +239,13 @@ module.exports = {
                     },
                 ]);
 
+                if (result.length === 0) {
+                    fs.writeFile(filePath, '', (err) => {
+                        if (err) { reject(err); } else { resolve(filePath); }
+                    });
+                    return;
+                }
+
                 let classificationHeaders = [];
                 let lastParticipant = result[0].classifications[0].participantId;
                 let index = 1;
@@ -294,58 +308,58 @@ module.exports = {
                     fs.unlinkSync(filePath);
                 }
 
-                let participants = await participantModel
+                const participants = await participantModel
                     .find({ projectId: new mongoose.Types.ObjectId(projectId), deleted: false })
                     .populate('countryId', 'name')
                     .populate('departmentId', 'name')
                     .populate('cityId', 'name')
                     .populate('areaId', 'name');
 
-                let headers = [
-                    { newName: "ID Participante", oldName: "_id" },
-                    { newName: "Nombre completo", oldName: "fullName" },
-                    { newName: "Edad", oldName: "age" },
-                    { newName: "Género", oldName: "gender" },
-                    { newName: "Estrato", oldName: "socialLevel" },
-                    { newName: "Titulo obtenido", oldName: "educationalLevel" },
-                    { newName: "País", oldName: "countryId", transform: (v) => v?.name || '' },
-                    { newName: "Región", oldName: "departmentId", transform: (v) => v?.name || '' },
-                    { newName: "Ciudad", oldName: "cityId", transform: (v) => v?.name || '' },
-                    { newName: "Área", oldName: "areaId", transform: (v) => v?.name || '' },
-                    { newName: "Observaciones", oldName: "observations" },
-                    { newName: "ID Proyecto", oldName: "projectId" },
-                    { newName: "Fecha de envío", oldName: "surveyDate" },
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Participantes');
+
+                worksheet.columns = [
+                    { header: 'ID Participante', key: '_id' },
+                    { header: 'Nombre completo', key: 'fullName' },
+                    { header: 'Edad', key: 'age' },
+                    { header: 'Género', key: 'gender' },
+                    { header: 'Estrato', key: 'socialLevel' },
+                    { header: 'Titulo obtenido', key: 'educationalLevel' },
+                    { header: 'País', key: 'country' },
+                    { header: 'Región', key: 'department' },
+                    { header: 'Ciudad', key: 'city' },
+                    { header: 'Área', key: 'area' },
+                    { header: 'Observaciones', key: 'observations' },
+                    { header: 'ID Proyecto', key: 'projectId' },
+                    { header: 'Fecha de envío', key: 'surveyDate' },
                 ];
 
-                participants = participants.map(async (participant) => {
-                    participant = participant.toJSON();
-                    for (let attribute in participant) {
-                        if (attribute == "projectId" || attribute == "_id") {
-                            participant[attribute] = participant[attribute].toString();
-                        } else if (attribute == "surveyDate") {
-                            let auxDate = new Date(participant[attribute]);
-                            auxDate.setHours(auxDate.getHours() - 5);
-                            participant[attribute] = auxDate.toISOString().split('T')[0] + " " + auxDate.toISOString().split('T')[1].split('.')[0];
-                        }
-                        let newTitle = headers.find(header => header.oldName == attribute);
-                        if (newTitle) {
-                            participant[newTitle.newName] = newTitle.transform ? newTitle.transform(participant[attribute]) : participant[attribute];
-                            delete participant[attribute];
-                        } else {
-                            delete participant[attribute];
-                        }
+                participants.forEach((participant) => {
+                    const p = participant.toJSON();
+                    let surveyDate = '';
+                    if (p.surveyDate) {
+                        const auxDate = new Date(p.surveyDate);
+                        auxDate.setHours(auxDate.getHours() - 5);
+                        surveyDate = auxDate.toISOString().split('T')[0] + ' ' + auxDate.toISOString().split('T')[1].split('.')[0];
                     }
-                    return participant;
+                    worksheet.addRow({
+                        _id: p._id?.toString(),
+                        fullName: p.fullName,
+                        age: p.age,
+                        gender: p.gender,
+                        socialLevel: p.socialLevel,
+                        educationalLevel: p.educationalLevel,
+                        country: p.countryId?.name || '',
+                        department: p.departmentId?.name || '',
+                        city: p.cityId?.name || '',
+                        area: p.areaId?.name || '',
+                        observations: p.observations,
+                        projectId: p.projectId?.toString(),
+                        surveyDate,
+                    });
                 });
 
-                let result = await Promise.all(participants);
-
-                let workbook = xlsx.utils.book_new();
-                let worksheet = xlsx.utils.json_to_sheet(result);
-
-                xlsx.utils.book_append_sheet(workbook, worksheet);
-                xlsx.writeFile(workbook, filePath);
-
+                await workbook.xlsx.writeFile(filePath);
                 resolve(filePath);
             } catch (error) {
                 console.error(error);

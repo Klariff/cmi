@@ -23,7 +23,8 @@ import {
   CdkDropListGroup,
 } from '@angular/cdk/drag-drop';
 import { NgFor } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { AuthInterceptor } from './interceptors/auth.interceptor';
 import { ToastrModule } from 'ngx-toastr';
 import { LoginComponent } from './admin/login/login.component';
 import { StepperComponent } from './stepper/stepper.component';
@@ -92,7 +93,8 @@ import { LinkUserDialogComponent } from './components/link-user-dialog/link-user
     ToastrModule.forRoot()
   ],
   providers: [
-    { provide: MatPaginatorIntl, useValue: getSpanishPaginatorIntl() }
+    { provide: MatPaginatorIntl, useValue: getSpanishPaginatorIntl() },
+    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true }
   ],
   bootstrap: [AppComponent]
 })

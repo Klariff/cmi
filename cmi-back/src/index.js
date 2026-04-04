@@ -6,15 +6,17 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const methodOverride = require('method-override');
+const rateLimit = require('express-rate-limit');
 const app = express();
 const env = require('./config/env');
 const { logging, log } = require('./services/log.service');
+const authMiddleware = require('./middleware/auth.middleware');
 
 app.use(cors());
 
 app.use('/*', (req, res, next) => { (mongoose.connection.readyState === 1) ? next() : res.status(logging.databaseNotReady.code).json(logging.databaseNotReady) });
 
-mongoose.connect(env.database.uri, { useNewUrlParser: true, useUnifiedTopology: true }).then(() => {
+mongoose.connect(env.database.uri).then(() => {
     log(null, logging.databaseConnected);
 }).catch(error => {
     log(null, logging.internalServerError, error.message);
@@ -42,6 +44,16 @@ if (env.https) {
 }
 
 app.use(bodyParser.json())
+
+app.use('/api/login', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { code: 429, message: 'Demasiados intentos. Intente nuevamente en 15 minutos.' }
+}));
+
+app.use(authMiddleware);
 
 app.use('/api', require('./routes/index.js'));
 

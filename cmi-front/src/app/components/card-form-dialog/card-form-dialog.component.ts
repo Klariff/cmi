@@ -7,6 +7,7 @@ import { ToastrService } from 'ngx-toastr';
 import Swal from 'sweetalert2';
 import imageCompression from 'browser-image-compression';
 @Component({
+  standalone: false,
   selector: 'app-card-form-dialog',
   templateUrl: './card-form-dialog.component.html',
   styleUrls: ['./card-form-dialog.component.scss']

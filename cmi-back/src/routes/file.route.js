@@ -17,17 +17,15 @@ const storage = new GridFsStorage({
             let element = await mongoose.model(bucket.charAt(0).toUpperCase() + bucket.slice(1)).findOne({ _id: file.originalname.replace(/\.[^/.]+$/, "") }).exec();
             element = await (await entityFileJoiner(element, bucket));
             let lastFileId;
-            if (element.files.length > 0) {
-                lastFileId = element.files[element.files.length - 1].substring(element.files[element.files.length - 1].lastIndexOf('/') + 1).split("=").pop();
-            } else {
-                lastFileId = null;
+            const fileInfo = {
+                filename: `${element._id}.${file.originalname.split('.').pop()}`,
+                bucketName: bucket
+            };
+            if (element.files.length === 0) {
+                return resolve(fileInfo);
             }
+            lastFileId = element.files[element.files.length - 1].substring(element.files[element.files.length - 1].lastIndexOf('/') + 1).split("=").pop();
             gfs[bucket].find({ _id: new mongoose.Types.ObjectId(lastFileId) }).toArray((err, files) => {
-                filename = `${element._id}.${file.originalname.split('.').pop()}`;
-                const fileInfo = {
-                    filename: filename,
-                    bucketName: bucket
-                };
                 resolve(fileInfo);
             });
         });

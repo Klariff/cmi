@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { ToastrService } from 'ngx-toastr';
 
 @Component({
+  standalone: false,
   selector: 'app-multiple-classifications-dialog',
   templateUrl: './multiple-classifications-dialog.component.html',
   styleUrls: ['./multiple-classifications-dialog.component.scss']

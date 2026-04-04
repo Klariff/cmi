@@ -22,6 +22,7 @@ import { MultipleClassificationsDialogComponent } from 'src/app/components/multi
 import { ActivatedRoute } from '@angular/router';
 import { ImageViewerComponent } from 'src/app/components/image-viewer/image-viewer.component';
 @Component({
+  standalone: false,
   selector: 'card-exercise-component',
   templateUrl: './card-exercise.component.html',
   styleUrls: ['./card-exercise.component.scss']
@@ -196,7 +197,7 @@ export class CardExerciseComponent implements OnInit {
     }
     this.classificationStageLabel += 0.1;
     this.classificationStageLabel = parseFloat(this.classificationStageLabel.toFixed(1));
-    if (this.stageIndex <= this.totalStages - 1 && this.closedQuestions) {
+    if (this.stageIndex == this.totalStages - 1 && this.closedQuestions) {
       this.allClassificationsCreated = true;
     }
   }
@@ -258,10 +259,10 @@ export class CardExerciseComponent implements OnInit {
             }
           })
 
-          let classificationRequests = [];
+          let classificationRequests: Promise<any>[] = [];
 
           this.classificationBodies.forEach((classificationBody: any) => {
-            let categoryRequests = [];
+            let categoryRequests: Promise<any>[] = [];
             classificationRequests.push(
               new Promise(async (resolve, reject) => {
                 this.httpClient.post(`${environment.baseURL}create/classification`, classificationBody).subscribe({
@@ -284,16 +285,29 @@ export class CardExerciseComponent implements OnInit {
                                 showConfirmButton: false
                               })
                               resolve(response);
-                            }
+                            },
+                            error: (err: any) => reject(err)
                           })
                         })
                       )
                     });
-                  }
+                    Promise.all(categoryRequests).then(resolve).catch(reject);
+                  },
+                  error: (err: any) => reject(err)
                 })
               })
             )
           });
+          Promise.all(classificationRequests).catch(() => {
+            Swal.close();
+            this.toastr.error('Error al guardar los datos. Por favor intente nuevamente.');
+            this.finished = false;
+          });
+        },
+        error: () => {
+          Swal.close();
+          this.toastr.error('Error al guardar los datos. Por favor intente nuevamente.');
+          this.finished = false;
         }
       });
     }

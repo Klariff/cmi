@@ -7,6 +7,7 @@ import { ToastrService } from 'ngx-toastr';
 import Swal from 'sweetalert2';
 
 @Component({
+  standalone: false,
   selector: 'app-project-form-dialog',
   templateUrl: './project-form-dialog.component.html',
   styleUrls: ['./project-form-dialog.component.scss']
