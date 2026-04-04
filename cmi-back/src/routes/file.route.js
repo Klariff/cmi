@@ -13,10 +13,8 @@ const storage = new GridFsStorage({
     file: (req, file) => {
         return new Promise(async (resolve, reject) => {
             let bucket = req.query.bucketName;
-            let filename = file.originalname;
             let element = await mongoose.model(bucket.charAt(0).toUpperCase() + bucket.slice(1)).findOne({ _id: file.originalname.replace(/\.[^/.]+$/, "") }).exec();
             element = await (await entityFileJoiner(element, bucket));
-            let lastFileId;
             const fileInfo = {
                 filename: `${element._id}.${file.originalname.split('.').pop()}`,
                 bucketName: bucket
@@ -25,9 +23,10 @@ const storage = new GridFsStorage({
                 return resolve(fileInfo);
             }
             lastFileId = element.files[element.files.length - 1].substring(element.files[element.files.length - 1].lastIndexOf('/') + 1).split("=").pop();
-            gfs[bucket].find({ _id: new mongoose.Types.ObjectId(lastFileId) }).toArray((err, files) => {
-                resolve(fileInfo);
-            });
+            try {
+                await gfs[bucket].find({ _id: new mongoose.Types.ObjectId(lastFileId) }).toArray();
+            } catch (err) {}
+            resolve(fileInfo);
         });
     }
 });
@@ -42,26 +41,31 @@ router.post('/upload/file', upload.single('file'), (req, res, next) => {
     });
 });
 
-router.get('/download/file', (req, res) => {
-    gfs[req.query.bucketName].find({ _id: new mongoose.Types.ObjectId(req.query.fileId) }).toArray((err, files) => {
+router.get('/download/file', async (req, res) => {
+    try {
+        const files = await gfs[req.query.bucketName].find({ _id: new mongoose.Types.ObjectId(req.query.fileId) }).toArray();
         if (!files || files.length === 0 || files[0].filename.includes('*')) {
             return res.status(logging.notFound.code).json(logging.notFound);
         }
         gfs[req.query.bucketName].openDownloadStreamByName(files[0].filename).pipe(res);
-    });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
 });
 
-router.delete('/delete/file', (req, res) => {
-    gfs[req.query.bucketName].find({ _id: new mongoose.Types.ObjectId(req.query.fileId) }).toArray(async (err, files) => {
+router.delete('/delete/file', async (req, res) => {
+    try {
+        const files = await gfs[req.query.bucketName].find({ _id: new mongoose.Types.ObjectId(req.query.fileId) }).toArray();
         if (!files || files.length === 0 || files[0].filename.includes('*')) {
             return res.status(logging.notFound.code).json(logging.notFound);
-        } else {
-            //let newName = files[0].filename.replace(/\.[^/.]+$/, "") + "*." + files[0].filename.split('.').pop();
-            //await gfs[req.query.bucketName].rename(new mongoose.Types.ObjectId(req.query.fileId), newName)
-            await gfs[req.query.bucketName].delete(new mongoose.Types.ObjectId(req.query.fileId));
-            res.send({ message: 'Archivo eliminado exitosamente' });
         }
-    });
+        await gfs[req.query.bucketName].delete(new mongoose.Types.ObjectId(req.query.fileId));
+        res.send({ message: 'Archivo eliminado exitosamente' });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
 });
 
 router.get('/download/results', async (req, res) => {

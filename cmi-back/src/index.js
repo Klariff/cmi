@@ -13,6 +13,7 @@ const { logging, log } = require('./services/log.service');
 const authMiddleware = require('./middleware/auth.middleware');
 
 app.use(cors());
+app.set('trust proxy', 1);
 
 app.use('/*', (req, res, next) => { (mongoose.connection.readyState === 1) ? next() : res.status(logging.databaseNotReady.code).json(logging.databaseNotReady) });
 
