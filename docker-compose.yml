@@ -58,7 +58,7 @@ services:
     depends_on:
       database:
         condition: service_healthy
-    restart: "no"
+    restart: on-failure
     entrypoint: >
       mongosh --host cmi-db --username admin --password cmi
       --authenticationDatabase admin
