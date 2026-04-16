@@ -19,6 +19,8 @@ services:
     ports:
       - "80:80"
     restart: unless-stopped
+    depends_on:
+      - backend
 
   database:
     image: mongo:7.0
