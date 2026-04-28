@@ -276,7 +276,7 @@ module.exports = {
                     row.classifications.forEach((classification) => {
                         categories.push(classification.code + " - " + classification.categoryName)
                     })
-                    categories = [row.classifications[0].code + " - " + row.classifications[0].cardName, ...categories]
+                    categories = [row._id + " - " + row.classifications[0].cardName, ...categories]
                     rowData.push(categories);
                 });
 
