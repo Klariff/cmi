@@ -638,14 +638,16 @@ export class AdminPanelComponent implements OnInit {
   }
 
   updateParameters() {
-    for (const attribute in this.project) {
-      if (this.project[attribute] == null || this.project[attribute] == undefined || this.project[attribute] === "" || this.project[attribute].trim() === "") {
+    const requiredStringFields = ['name', 'introductionText', 'endingText'];
+    for (const attribute of requiredStringFields) {
+      const value = this.project[attribute];
+      if (value == null || typeof value !== 'string' || value.trim() === "") {
         this.toastr.error("Complete el formulario", 'Error');
         return;
       }
     }
 
-    if (this.project.minOpenQuestionsCnt < 1) {
+    if (this.project.minOpenQuestionsCnt == null || this.project.minOpenQuestionsCnt < 1) {
       this.toastr.error("El número mínimo de clasificaciones libres debe ser mayor a 0", 'Error');
       return;
     }
