@@ -60,19 +60,33 @@
 }
 
 .horizontal-drag-drop-list {
-  display: flex;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  align-items: stretch;
 }
 
 .horizontal-drag-drop-item {
-  flex: 0 0 200px;
-  padding: 16px;
+  padding: 12px;
   background-color: white;
   border: solid 1px #ccc;
   border-radius: 4px;
-  margin-right: 8px;
   cursor: move;
-  height: fit-content;
+  box-sizing: border-box;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-height: 140px;
+
+  img {
+    height: 6rem;
+    width: auto;
+    object-fit: contain;
+    border-radius: 4px;
+  }
 }
 
 .bottom-buttons {

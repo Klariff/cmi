@@ -187,37 +187,93 @@
             </div>
             <div *ngIf="page == 'parameters' && projectLoaded && selectedProject != null" class="page">
                 <h1>Configuración</h1>
-                <h3>Nombre del proyecto</h3>
-                <mat-form-field style="width: auto;">
-                    <input matInput [(ngModel)]="project.name">
-                </mat-form-field>
-                <br>
-                <h3>Número mínimo de clasificaciones libres obligatorias</h3>
-                <mat-form-field style="width: auto;">
-                    <input matInput type="number" [(ngModel)]="project.minOpenQuestionsCnt">
-                </mat-form-field>
-                <br>
-                <h3>Texto introducción (Aparecerá cuando el participante ingresa al enlace)</h3>
-                <mat-form-field style="width: 50%;">
-                    <mat-label>Texto introducción</mat-label>
-                    <textarea matInput [(ngModel)]="project.introductionText" cdkTextareaAutosize
-                        #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="1" cdkAutosizeMaxRows="15"></textarea>
-                </mat-form-field>
-                <br>
-                <h3>Texto final (Aparecerá cuando el participante finalice las clasificaciones)</h3>
-                <mat-form-field style="width: 50%;">
-                    <mat-label>Texto final</mat-label>
-                    <textarea matInput [(ngModel)]="project.endingText" cdkTextareaAutosize
-                        #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="1" cdkAutosizeMaxRows="15"></textarea>
-                </mat-form-field>
-                <br>
-                <button mat-flat-button color="primary" (click)="updateParameters()">Actualizar</button> <br><br>
-                <button mat-raised-button color="primary" (click)="linkUser()">Vincular usuario</button> 
-                <button mat-raised-button color="primary"  style="margin-left: 1rem;" (click)="unlinkUser()">Desvincular usuario</button>
-                <button mat-raised-button color="primary"  style="margin-left: 1rem;" (click)="unlinkMe()">Desvincularme</button> <br><br>
-                <button mat-raised-button color="primary" (click)="deleteResults()">Eliminar resultados</button>
-                <button mat-raised-button color="primary" style="margin-left: 1rem;" (click)="deleteProject()">Eliminar
-                    proyecto</button> <br><br>
+
+                <mat-card class="config-card">
+                    <mat-card-title>Información general</mat-card-title>
+                    <mat-card-content>
+                        <mat-form-field appearance="outline" class="field-full" subscriptSizing="dynamic">
+                            <mat-label>Nombre del proyecto</mat-label>
+                            <input matInput [(ngModel)]="project.name">
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="field-full" subscriptSizing="dynamic">
+                            <mat-label>Mínimo de clasificaciones libres obligatorias</mat-label>
+                            <input matInput type="number" [(ngModel)]="project.minOpenQuestionsCnt">
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="field-full" subscriptSizing="dynamic">
+                            <mat-label>Texto de introducción</mat-label>
+                            <textarea matInput [(ngModel)]="project.introductionText" cdkTextareaAutosize
+                                cdkAutosizeMinRows="1" cdkAutosizeMaxRows="15"></textarea>
+                            <mat-hint>Aparecerá cuando el participante ingresa al enlace</mat-hint>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="field-full" subscriptSizing="dynamic">
+                            <mat-label>Texto final</mat-label>
+                            <textarea matInput [(ngModel)]="project.endingText" cdkTextareaAutosize
+                                cdkAutosizeMinRows="1" cdkAutosizeMaxRows="15"></textarea>
+                            <mat-hint>Aparecerá cuando el participante finalice las clasificaciones</mat-hint>
+                        </mat-form-field>
+                    </mat-card-content>
+                    <mat-card-actions align="end">
+                        <button mat-flat-button color="primary" (click)="updateParameters()">
+                            <mat-icon>save</mat-icon> Guardar cambios
+                        </button>
+                    </mat-card-actions>
+                </mat-card>
+
+                <mat-card class="config-card">
+                    <mat-card-title>Video tutorial</mat-card-title>
+                    <mat-card-subtitle>Si no se sube ninguno, se usará el video por defecto</mat-card-subtitle>
+                    <mat-card-content>
+                        <div *ngIf="project.videoId" class="video-preview">
+                            <video controls [src]="getProjectVideoUrl()"></video>
+                            <button mat-stroked-button color="warn" (click)="deleteProjectVideo()">
+                                <mat-icon>delete</mat-icon> Eliminar video
+                            </button>
+                        </div>
+                        <div *ngIf="!project.videoId" class="video-placeholder">
+                            <mat-icon>movie</mat-icon>
+                            <span>Aún no se ha subido un video personalizado</span>
+                        </div>
+                        <div class="upload-row">
+                            <button mat-stroked-button color="primary" (click)="videoInput.click()">
+                                <mat-icon>attach_file</mat-icon>
+                                {{ selectedVideoFile ? 'Cambiar archivo' : 'Seleccionar archivo' }}
+                            </button>
+                            <span class="filename" *ngIf="selectedVideoFile">{{ selectedVideoFile.name }}</span>
+                            <input type="file" accept="video/*" #videoInput (change)="onVideoSelected($event)" hidden>
+                            <button mat-flat-button color="primary" [disabled]="!selectedVideoFile" (click)="uploadProjectVideo()">
+                                <mat-icon>cloud_upload</mat-icon> Subir video
+                            </button>
+                        </div>
+                    </mat-card-content>
+                </mat-card>
+
+                <mat-card class="config-card">
+                    <mat-card-title>Usuarios del proyecto</mat-card-title>
+                    <mat-card-content class="button-group">
+                        <button mat-stroked-button color="primary" (click)="linkUser()">
+                            <mat-icon>person_add</mat-icon> Vincular usuario
+                        </button>
+                        <button mat-stroked-button color="primary" (click)="unlinkUser()">
+                            <mat-icon>person_remove</mat-icon> Desvincular usuario
+                        </button>
+                        <button mat-stroked-button color="primary" (click)="unlinkMe()">
+                            <mat-icon>logout</mat-icon> Desvincularme
+                        </button>
+                    </mat-card-content>
+                </mat-card>
+
+                <mat-card class="config-card danger-card">
+                    <mat-card-title>Acciones irreversibles</mat-card-title>
+                    <mat-card-subtitle>Estas acciones no se pueden deshacer</mat-card-subtitle>
+                    <mat-card-content class="button-group">
+                        <button mat-stroked-button color="warn" (click)="deleteResults()">
+                            <mat-icon>delete_sweep</mat-icon> Eliminar resultados
+                        </button>
+                        <button mat-flat-button color="warn" (click)="deleteProject()">
+                            <mat-icon>delete_forever</mat-icon> Eliminar proyecto
+                        </button>
+                    </mat-card-content>
+                </mat-card>
             </div>
             <div *ngIf="page == 'user'" class="page">
                 <h1>Usuario</h1>

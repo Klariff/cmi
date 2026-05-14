@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { NgIf } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatDialog } from '@angular/material/dialog';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { ICard } from 'src/app/utils/interfaces/card.interface';
 import { environment } from 'src/environments/environment';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -66,6 +66,7 @@ export class AdminPanelComponent implements OnInit {
   selectedProject: any = null;
   user: any;
   newUser: any = {};
+  selectedVideoFile: File | null = null;
 
   constructor(
     private readonly dialog: MatDialog,
@@ -674,6 +675,56 @@ export class AdminPanelComponent implements OnInit {
       }
     });
 
+  }
+
+  getProjectVideoUrl(): string {
+    if (!this.project?.videoId) return '';
+    return `${environment.baseURL}download/file?bucketName=project&fileId=${this.project.videoId}`;
+  }
+
+  onVideoSelected(event: any) {
+    this.selectedVideoFile = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+  }
+
+  uploadProjectVideo() {
+    if (!this.selectedVideoFile || !this.project?._id) return;
+    Swal.fire({ title: "Subiendo video...", allowOutsideClick: false, showConfirmButton: false });
+    Swal.showLoading();
+    const formData = new FormData();
+    const ext = this.selectedVideoFile.name.split('.').pop();
+    formData.append('file', this.selectedVideoFile, `${this.project._id}.${ext}`);
+    let params = new HttpParams().append('bucketName', 'project');
+    this.httpClient.post(`${environment.baseURL}upload/file`, formData, { params }).subscribe({
+      next: () => {
+        this.selectedVideoFile = null;
+        this.httpClient.get(`${environment.baseURL}get/project?projectId=${this.project._id}`).subscribe((response: any) => {
+          this.project = response;
+          Swal.close();
+          this.toastr.success('Video subido');
+        });
+      },
+      error: () => {
+        Swal.close();
+        this.toastr.error("Error al subir el video", 'Error');
+      }
+    });
+  }
+
+  deleteProjectVideo() {
+    if (!this.project?.videoId) return;
+    Swal.fire({ title: "Eliminando video...", allowOutsideClick: false, showConfirmButton: false });
+    Swal.showLoading();
+    this.httpClient.patch(`${environment.baseURL}update/project?projectId=${this.project._id}`, { videoId: null }).subscribe({
+      next: () => {
+        this.project.videoId = null;
+        Swal.close();
+        this.toastr.success('Video eliminado');
+      },
+      error: () => {
+        Swal.close();
+        this.toastr.error("Error al eliminar el video", 'Error');
+      }
+    });
   }
 
 }

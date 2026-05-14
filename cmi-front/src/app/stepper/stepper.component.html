@@ -1,7 +1,7 @@
 <div class="main-container">
     <mat-stepper [linear]="true" #stepper>
       <mat-step completed=false label="Video Tutorial">
-        <video-guide-component></video-guide-component>
+        <video-guide-component [videoUrl]="videoUrl"></video-guide-component>
         <div class="bottom-buttons" style="text-align: end;">
           <button (click)="openFormStep(stepper)" [disabled]="!videoGuideComponent?.videoEnded"
             mat-flat-button color="primary">Empezar</button>

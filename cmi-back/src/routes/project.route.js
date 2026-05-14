@@ -67,8 +67,22 @@ router.post('/create/project', async (req, res) => {
 router.patch('/update/project', async (req, res) => {
     try {
         delete req.body._id;
+
+        let previousVideoId = null;
+        if ('videoId' in req.body) {
+            const current = await projectModel.findOne({ _id: req.query.projectId }).exec();
+            if (current && current.videoId && (req.body.videoId === null || (req.body.videoId && req.body.videoId.toString() !== current.videoId.toString()))) {
+                previousVideoId = current.videoId;
+            }
+        }
+
         const savedProject = await projectModel.updateOne({ _id: req.query.projectId }, { $set: req.body }).exec()
         if (savedProject.matchedCount === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el parámetro" })
+
+        if (previousVideoId) {
+            try { await gfs["project"].delete(new mongoose.Types.ObjectId(previousVideoId)); } catch (e) {}
+        }
+
         return res.json({
             message: "Proyecto actualizado exitosamente",
         });
@@ -90,8 +104,14 @@ router.delete('/delete/project', async (req, res) => {
             .filter(card => card.imageId)
             .map(card => gfs["card"].delete(new mongoose.Types.ObjectId(card.imageId)));
 
+        const project = await projectModel.findOne({ _id: projectObjectId }).session(session).exec();
+        const videoDeletion = project && project.videoId
+            ? [gfs["project"].delete(new mongoose.Types.ObjectId(project.videoId)).catch(() => {})]
+            : [];
+
         await Promise.all([
             ...imagesDeletions,
+            ...videoDeletion,
             cardModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
             categoryModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
             classificationModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),

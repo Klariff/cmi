@@ -9,6 +9,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 export class VideoGuideComponent {
 
   @Input() videoEnded: boolean = false;
+  @Input() videoUrl: string = 'assets/tutorial.mp4';
 
   onVideoEnded() {
     this.videoEnded = true;

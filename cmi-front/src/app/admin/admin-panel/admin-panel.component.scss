@@ -7,7 +7,7 @@
 
 
 .page {
-  padding: 3rem;
+  padding: 2rem 2.5rem;
 }
 
 .example-sidenav-content {
@@ -81,4 +81,126 @@
   .example-list.cdk-drop-list-dragging .example-box:not(.cdk-drag-placeholder) {
     transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
   }
-  
+
+  /* ===== Configuración (parameters page) ===== */
+  .config-card {
+    max-width: 900px;
+    margin: 0 0 1.5rem 0;
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+
+    mat-card-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    mat-card-subtitle {
+      margin-bottom: 1rem;
+      color: rgba(0, 0, 0, 0.55);
+    }
+
+    mat-card-content {
+      padding-top: 0.5rem;
+    }
+
+    mat-card-actions {
+      padding: 0.5rem 0 0 0;
+    }
+
+    button mat-icon {
+      vertical-align: middle;
+      margin-right: 4px;
+      font-size: 18px;
+      height: 18px;
+      width: 18px;
+    }
+  }
+
+  .field-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .field-half {
+    flex: 1 1 280px;
+    min-width: 240px;
+  }
+
+  .field-full {
+    width: 100%;
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .config-card mat-form-field {
+    .mat-mdc-form-field-subscript-wrapper {
+      margin-bottom: 0.25rem;
+    }
+  }
+
+  .button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .video-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+
+    video {
+      width: 100%;
+      max-width: 480px;
+      max-height: 270px;
+      border-radius: 8px;
+      background: #000;
+    }
+  }
+
+  .video-placeholder {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    background: #f5f7fa;
+    border: 1px dashed #c9d1da;
+    border-radius: 8px;
+    color: rgba(0, 0, 0, 0.6);
+
+    mat-icon {
+      font-size: 28px;
+      height: 28px;
+      width: 28px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+  }
+
+  .upload-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+
+    .filename {
+      font-size: 0.9rem;
+      color: rgba(0, 0, 0, 0.65);
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .danger-card {
+    border: 1px solid rgba(244, 67, 54, 0.25);
+
+    mat-card-title {
+      color: #c62828;
+    }
+  }

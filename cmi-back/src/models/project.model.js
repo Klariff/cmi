@@ -6,6 +6,7 @@ const ProjectSchema = mongoose.Schema({
     minOpenQuestionsCnt: { type: Number, required: [true, "Número minimo de preguntas libres es requerido"] },
     introductionText: { type: String, required: [true, "Texto introductorio es requerido"] },
     endingText: { type: String, required: [true, "Texto de finalización es requerido"] },
+    videoId: { type: mongoose.Schema.Types.ObjectId, default: null },
     deleted: { type: Boolean, default: false },
 });
 

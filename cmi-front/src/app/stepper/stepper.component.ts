@@ -38,6 +38,7 @@ export class StepperComponent implements OnInit {
 
   title = 'CMI';
   globalPromises: any = [];
+  videoUrl: string = 'assets/tutorial.mp4';
 
   ngOnInit(): void {
     sessionStorage.clear();
@@ -51,6 +52,9 @@ export class StepperComponent implements OnInit {
         next: (response: any) => {
           if (this.userFormComponent) {
             this.userFormComponent.introductionText = response.introductionText;
+          }
+          if (response.videoId) {
+            this.videoUrl = `${environment.baseURL}download/file?bucketName=project&fileId=${response.videoId}`;
           }
           sessionStorage.setItem("projectId", this.route.snapshot.queryParamMap.get("projectId")!);
         },

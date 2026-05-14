@@ -1,6 +1,5 @@
 <div class="content">
-    <video controls class="video-container" (ended)="onVideoEnded()">
-        <source src="assets/tutorial.mp4" type="video/mp4">
+    <video controls class="video-container" (ended)="onVideoEnded()" [src]="videoUrl">
         Tu navegador no puede reproducir el video.
     </video>
     <div class="text-container">

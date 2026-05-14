@@ -31,6 +31,7 @@ import { StepperComponent } from './stepper/stepper.component';
 import { AdminPanelComponent } from './admin/admin-panel/admin-panel.component';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { CardFormDialogComponent } from './components/card-form-dialog/card-form-dialog.component';
 import { ClassificationFormDialogComponent } from './components/classification-form-dialog/classification-form-dialog.component';
@@ -89,6 +90,7 @@ import { LinkUserDialogComponent } from './components/link-user-dialog/link-user
     HttpClientModule,
     MatProgressBarModule,
     MatIconModule,
+    MatCardModule,
     MatSidenavModule,
     ToastrModule.forRoot()
   ],

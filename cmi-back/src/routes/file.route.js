@@ -1,44 +1,61 @@
 const router = require('express').Router();
 const env = require('../config/env');
 const { logging, log } = require('../services/log.service.js');
-const { GridFsStorage } = require('multer-gridfs-storage');
 const multer = require('multer');
 const mongoose = require('mongoose');
-const entityFileJoiner = require('../utils/entityFileJoiner.js');
+const { Readable } = require('stream');
 const { exportResultsCSV, exportParticipantsExcel, exportLabeledResultsCSV } = require('../services/export.service');
 const fs = require('fs');
 
-const storage = new GridFsStorage({
-    url: env.database.uri,
-    file: (req, file) => {
-        return new Promise(async (resolve, reject) => {
-            let bucket = req.query.bucketName;
-            let element = await mongoose.model(bucket.charAt(0).toUpperCase() + bucket.slice(1)).findOne({ _id: file.originalname.replace(/\.[^/.]+$/, "") }).exec();
-            element = await (await entityFileJoiner(element, bucket));
-            const fileInfo = {
-                filename: `${element._id}.${file.originalname.split('.').pop()}`,
-                bucketName: bucket
-            };
-            if (element.files.length === 0) {
-                return resolve(fileInfo);
-            }
-            lastFileId = element.files[element.files.length - 1].substring(element.files[element.files.length - 1].lastIndexOf('/') + 1).split("=").pop();
-            try {
-                await gfs[bucket].find({ _id: new mongoose.Types.ObjectId(lastFileId) }).toArray();
-            } catch (err) {}
-            resolve(fileInfo);
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
+
+const bucketFieldMap = { card: 'imageId', project: 'videoId' };
+
+router.post('/upload/file', upload.single('file'), async (req, res) => {
+    try {
+        const bucket = req.query.bucketName;
+        if (!bucket || !gfs[bucket]) {
+            return res.status(logging.invalidParameters.code).json({ message: "Bucket inválido" });
+        }
+        if (!req.file) {
+            return res.status(logging.invalidParameters.code).json({ message: "Archivo requerido" });
+        }
+
+        const fieldName = bucketFieldMap[bucket] || 'imageId';
+        const Model = mongoose.model(bucket.charAt(0).toUpperCase() + bucket.slice(1));
+        const entityId = req.file.originalname.replace(/\.[^/.]+$/, "");
+        const ext = req.file.originalname.split('.').pop();
+        const filename = `${entityId}.${ext}`;
+
+        const entity = await Model.findOne({ _id: entityId }).exec();
+        if (!entity) {
+            return res.status(logging.notFound.code).json({ message: "Entidad no encontrada" });
+        }
+        const previousFileId = entity[fieldName] || null;
+
+        const uploadStream = gfs[bucket].openUploadStream(filename, { contentType: req.file.mimetype });
+        const newFileId = uploadStream.id;
+
+        await new Promise((resolve, reject) => {
+            Readable.from(req.file.buffer).pipe(uploadStream)
+                .on('finish', resolve)
+                .on('error', reject);
         });
+
+        await Model.updateOne({ _id: entityId }, { [fieldName]: newFileId }).exec();
+
+        if (previousFileId && previousFileId.toString() !== newFileId.toString()) {
+            try { await gfs[bucket].delete(new mongoose.Types.ObjectId(previousFileId)); } catch (e) {}
+        }
+
+        res.send({
+            message: 'Archivo subido exitosamente',
+            id: newFileId
+        });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-});
-
-const upload = multer({ storage });
-
-router.post('/upload/file', upload.single('file'), (req, res, next) => {
-    mongoose.model(req.query.bucketName.charAt(0).toUpperCase() + req.query.bucketName.slice(1)).updateOne({ _id: req.file.filename.split('.')[0] }, { imageId: req.file.id }).exec();
-    res.send({
-        message: 'Archivo subido exitosamente',
-        id: req.file.id
-    });
 });
 
 router.get('/download/file', async (req, res) => {
