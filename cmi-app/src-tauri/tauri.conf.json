@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CMI",
+  "version": "0.1.0",
+  "identifier": "com.klariff.cmi",
+  "build": {
+    "beforeDevCommand": "npm --prefix cmi-back start",
+    "devUrl": "http://127.0.0.1:4000",
+    "beforeBuildCommand": "npm --prefix cmi-front run build && rm -rf cmi-back/public && cp -r cmi-front/dist/cmi-front cmi-back/public",
+    "frontendDist": "../../cmi-back/public"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "CMI",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

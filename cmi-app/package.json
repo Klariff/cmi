@@ -1,0 +1,13 @@
+{
+  "name": "cmi-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tauri shell that bundles the CMI backend and frontend into a single desktop application.",
+  "scripts": {
+    "tauri": "cargo tauri",
+    "dev": "cargo tauri dev",
+    "build": "cargo tauri build",
+    "backend:start": "node ../cmi-back/src/index.js",
+    "frontend:build": "cd ../cmi-front && npm run build && rm -rf ../cmi-back/public && cp -r dist/cmi-front ../cmi-back/public"
+  }
+}
