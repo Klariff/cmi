@@ -1,3 +1,7 @@
 node_modules/
 src-tauri/target/
 src-tauri/gen/
+
+# cloudflared sidecars are downloaded on demand by scripts/fetch-cloudflared.sh
+# (one binary per Rust target triple, ~40MB each — too big for git).
+src-tauri/binaries/cloudflared-*

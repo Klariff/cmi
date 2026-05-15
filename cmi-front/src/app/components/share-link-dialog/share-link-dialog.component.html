@@ -1,0 +1,45 @@
+<h1 mat-dialog-title>Enlace público</h1>
+<div mat-dialog-content class="dialog-body">
+    <div *ngIf="loading" class="loading">
+        <mat-icon class="spin">autorenew</mat-icon>
+        <span>Iniciando túnel… esto puede tardar unos segundos.</span>
+    </div>
+
+    <div *ngIf="error" class="error-box">
+        <mat-icon>error_outline</mat-icon>
+        <div>
+            <strong>No se pudo iniciar el enlace.</strong>
+            <pre>{{ error }}</pre>
+        </div>
+    </div>
+
+    <div *ngIf="url && !error" class="url-block">
+        <p class="hint">Comparte este enlace con tus participantes. Funciona mientras esta app esté abierta.</p>
+
+        <div *ngIf="participantUrl" class="url-row">
+            <label>Enlace para participantes</label>
+            <div class="copy-row">
+                <input matInput [value]="participantUrl" readonly>
+                <button mat-icon-button (click)="copy(participantUrl)" title="Copiar">
+                    <mat-icon>content_copy</mat-icon>
+                </button>
+            </div>
+        </div>
+
+        <div class="url-row">
+            <label>URL base (administrador)</label>
+            <div class="copy-row">
+                <input matInput [value]="url" readonly>
+                <button mat-icon-button (click)="copy(url)" title="Copiar">
+                    <mat-icon>content_copy</mat-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<mat-dialog-actions align="end">
+    <button mat-button (click)="close()">Cerrar</button>
+    <button mat-stroked-button color="warn" *ngIf="url" (click)="stop()">
+        <mat-icon>stop_circle</mat-icon> Detener enlace
+    </button>
+</mat-dialog-actions>

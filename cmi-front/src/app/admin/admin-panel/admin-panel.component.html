@@ -41,6 +41,12 @@
                         Copiar link
                     </button><br>
                 </div>
+                <div *ngIf="canShareLink">
+                    <button id="share-link" mat-button (click)="openShareLink()" class="sidenav-item">
+                        <mat-icon>cloud</mat-icon>
+                        Enlace público
+                    </button><br>
+                </div>
             </div>
             <div style="position: absolute; bottom: 100px;">
                 <button id="create-project-tab" mat-button (click)="createProject()" class="sidenav-item">

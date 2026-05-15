@@ -46,6 +46,7 @@ import { SignupComponent } from './admin/signup/signup.component';
 import { PasswordFormDialogComponent } from './components/password-form-dialog/password-form-dialog.component';
 import { LinkUserDialogComponent } from './components/link-user-dialog/link-user-dialog.component';
 import { CategoryFormDialogComponent } from './components/category-form-dialog/category-form-dialog.component';
+import { ShareLinkDialogComponent } from './components/share-link-dialog/share-link-dialog.component';
 import { MatMenuModule } from '@angular/material/menu';
 
 @NgModule({
@@ -66,6 +67,7 @@ import { MatMenuModule } from '@angular/material/menu';
     ProjectFormDialogComponent,
     LinkUserDialogComponent,
     CategoryFormDialogComponent,
+    ShareLinkDialogComponent,
     SignupComponent
   ],
   imports: [

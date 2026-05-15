@@ -23,6 +23,8 @@ import { jwtDecode } from "jwt-decode";
 import { ProjectFormDialogComponent } from 'src/app/components/project-form-dialog/project-form-dialog.component';
 import { PasswordFormDialogComponent } from 'src/app/components/password-form-dialog/password-form-dialog.component';
 import { LinkUserDialogComponent } from 'src/app/components/link-user-dialog/link-user-dialog.component';
+import { ShareLinkDialogComponent } from 'src/app/components/share-link-dialog/share-link-dialog.component';
+import { ShareLinkService } from 'src/app/services/share-link.service';
 
 @Component({
   standalone: false,
@@ -67,13 +69,21 @@ export class AdminPanelComponent implements OnInit {
   user: any;
   newUser: any = {};
   selectedVideoFile: File | null = null;
+  canShareLink: boolean = false;
 
   constructor(
     private readonly dialog: MatDialog,
     private readonly httpClient: HttpClient,
     private toastr: ToastrService,
     private readonly fileSaverService: FileSaverService,
-  ) { }
+    private readonly shareLink: ShareLinkService,
+  ) {
+    this.canShareLink = this.shareLink.isAvailable();
+  }
+
+  openShareLink() {
+    this.dialog.open(ShareLinkDialogComponent, { width: '500px' });
+  }
 
   ngOnInit(): void {
     if (sessionStorage.getItem("userId")) {
