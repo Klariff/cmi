@@ -11,7 +11,7 @@ const envVarsSchema = Joi.object().keys({
     NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
     PORT: Joi.number().default(4000),
     HTTPS: Joi.boolean().default(false),
-    BASE_URL: Joi.string().required().description('API base URL'),
+    BASE_URL: Joi.string().default('127.0.0.1:4000').description('API base URL'),
     JWT_EXPIRATION_TIME: Joi.string().required().description('JWT expiration time'),
     EPOCH: Joi.string().required().description('Epoch time'),
     SALT_ROUNDS: Joi.number().required().description('Salt rounds'),

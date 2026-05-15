@@ -1,0 +1,91 @@
+name: Release
+
+# Build a Tauri installer for every supported platform and attach the
+# artifacts to a GitHub release. Triggers on a `v*` tag (e.g. `v1.0.0`)
+# and is also runnable manually from the Actions tab for testing.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Build ${{ matrix.runner }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14        # Apple Silicon
+            target: aarch64-apple-darwin
+            args: "--target aarch64-apple-darwin"
+          - runner: macos-13        # Intel
+            target: x86_64-apple-darwin
+            args: "--target x86_64-apple-darwin"
+          - runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            args: ""
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: ""
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            cmi-app/src-tauri/target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('cmi-app/src-tauri/Cargo.lock') }}
+
+      - name: Install backend dependencies
+        run: npm ci --omit=dev || npm install --omit=dev
+        working-directory: cmi-back
+
+      - name: Install frontend dependencies
+        run: npm ci || npm install
+        working-directory: cmi-front
+
+      - name: Fetch sidecar binaries
+        shell: bash
+        working-directory: cmi-app
+        run: |
+          ./scripts/fetch-node.sh
+          ./scripts/fetch-cloudflared.sh
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: cmi-app
+          tagName: ${{ github.ref_name }}
+          releaseName: "CMI ${{ github.ref_name }}"
+          releaseBody: "Automated build for ${{ github.ref_name }}."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

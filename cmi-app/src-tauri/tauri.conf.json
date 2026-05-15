@@ -12,7 +12,9 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "CMI",
+        "url": "http://127.0.0.1:4000",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
@@ -29,8 +31,14 @@
     "active": true,
     "targets": "all",
     "externalBin": [
-      "binaries/cloudflared"
+      "binaries/cloudflared",
+      "binaries/node"
     ],
+    "resources": {
+      "../../cmi-back/src":          "cmi-back/src",
+      "../../cmi-back/node_modules": "cmi-back/node_modules",
+      "../../cmi-back/package.json": "cmi-back/package.json"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
