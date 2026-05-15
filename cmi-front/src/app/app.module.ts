@@ -45,6 +45,8 @@ import { ImageViewerComponent } from './components/image-viewer/image-viewer.com
 import { SignupComponent } from './admin/signup/signup.component';
 import { PasswordFormDialogComponent } from './components/password-form-dialog/password-form-dialog.component';
 import { LinkUserDialogComponent } from './components/link-user-dialog/link-user-dialog.component';
+import { CategoryFormDialogComponent } from './components/category-form-dialog/category-form-dialog.component';
+import { MatMenuModule } from '@angular/material/menu';
 
 @NgModule({
   declarations: [
@@ -63,6 +65,7 @@ import { LinkUserDialogComponent } from './components/link-user-dialog/link-user
     ImageViewerComponent,
     ProjectFormDialogComponent,
     LinkUserDialogComponent,
+    CategoryFormDialogComponent,
     SignupComponent
   ],
   imports: [
@@ -91,6 +94,7 @@ import { LinkUserDialogComponent } from './components/link-user-dialog/link-user
     MatProgressBarModule,
     MatIconModule,
     MatCardModule,
+    MatMenuModule,
     MatSidenavModule,
     ToastrModule.forRoot()
   ],

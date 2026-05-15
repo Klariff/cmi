@@ -19,6 +19,7 @@ import { ToastrService } from 'ngx-toastr';
 import { concat, finalize, of, forkJoin } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { MultipleClassificationsDialogComponent } from 'src/app/components/multiple-classifications-dialog/multiple-classifications-dialog.component';
+import { CategoryFormDialogComponent } from 'src/app/components/category-form-dialog/category-form-dialog.component';
 import { ActivatedRoute } from '@angular/router';
 import { ImageViewerComponent } from 'src/app/components/image-viewer/image-viewer.component';
 @Component({
@@ -322,6 +323,37 @@ export class CardExerciseComponent implements OnInit {
       this.categories.push({ name: this.categoryInput, code: this.categoryCtn, cards: [] })
       this.categoryInput = "";
       this.categoryCtn++;
+    }
+  }
+
+  openAddCategoryDialog() {
+    if (this.closedQuestions) return;
+    this.dialog.open(CategoryFormDialogComponent, {
+      width: '360px',
+      data: { existingNames: this.categories.map(c => c.name) }
+    }).afterClosed().subscribe((name: string | null) => {
+      if (name) {
+        this.categories.push({ name, code: this.categoryCtn, cards: [] });
+        this.categoryCtn++;
+      }
+    });
+  }
+
+  moveCardToCategory(cardName: string, targetCategory: any) {
+    const namedIdx = this.namedCards.indexOf(cardName);
+    if (namedIdx > -1) {
+      this.namedCards.splice(namedIdx, 1);
+      targetCategory.cards.push(cardName);
+      return;
+    }
+    for (const cat of this.categories) {
+      const idx = cat.cards.indexOf(cardName);
+      if (idx > -1) {
+        if (cat === targetCategory) return;
+        cat.cards.splice(idx, 1);
+        targetCategory.cards.push(cardName);
+        return;
+      }
     }
   }
 

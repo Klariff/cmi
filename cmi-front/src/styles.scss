@@ -3,3 +3,11 @@
 
 //html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* CDK drag preview is appended to <body>, so it must be styled globally.
+   Let it grow to fit its content instead of clipping with scrollbars. */
+.horizontal-drag-drop-item.cdk-drag-preview {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
