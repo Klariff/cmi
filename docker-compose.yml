@@ -1,22 +1,11 @@
 services:
-  backend:
-    container_name: cmi-back
+  cmi:
+    container_name: cmi
     build:
-      context: ./cmi-back
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: cmi-back/Dockerfile
     ports:
-      - "4000:4000"
+      - "80:4000"
     volumes:
       - ./cmi-back/data:/app/data
     restart: unless-stopped
-
-  frontend:
-    container_name: cmi-front
-    build:
-      context: ./cmi-front
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-    restart: unless-stopped
-    depends_on:
-      - backend

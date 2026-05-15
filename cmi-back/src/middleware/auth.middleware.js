@@ -20,6 +20,9 @@ const PUBLIC_PATHS = [
 ];
 
 module.exports = (req, res, next) => {
+    // Static frontend assets and SPA paths are not auth-checked.
+    if (!req.path.startsWith('/api/')) return next();
+
     const isPublic = PUBLIC_PATHS.some(p => p.method === req.method && req.path === p.path);
     if (isPublic) return next();
 

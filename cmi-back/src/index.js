@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const cors = require('cors');
 const http = require('http');
 const express = require('express');
@@ -28,8 +30,17 @@ app.use('/api/login', rateLimit({
 app.use(authMiddleware);
 
 app.use('/api', require('./routes/index.js'));
-
 app.post('/api/echo', (req, res) => res.json(req.body));
+
+// Serve the bundled Angular frontend, if present.
+// In production / packaged builds, the build output sits in cmi-back/public/.
+const PUBLIC_DIR = path.join(__dirname, '../public');
+if (fs.existsSync(PUBLIC_DIR)) {
+    app.use(express.static(PUBLIC_DIR, { index: false }));
+    app.get(/^\/(?!api\/).*/, (req, res) => {
+        res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    });
+}
 
 http.createServer(app).listen(env.port, () => {
     console.log(`HTTP SERVER LISTENING @ ${env.port}`);
