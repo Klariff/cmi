@@ -6,10 +6,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "4000:4000"
+    volumes:
+      - ./cmi-back/data:/app/data
     restart: unless-stopped
-    depends_on:
-      mongo-init:
-        condition: service_completed_successfully
 
   frontend:
     container_name: cmi-front
@@ -21,47 +20,3 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-
-  database:
-    image: mongo:7.0
-    container_name: cmi-db
-    entrypoint: >
-      /bin/bash -c "
-        mkdir -p /etc/mongo &&
-        cp /run/mongo-keyfile /etc/mongo/keyfile &&
-        chown mongodb:mongodb /etc/mongo/keyfile &&
-        chmod 400 /etc/mongo/keyfile &&
-        exec /usr/local/bin/docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /etc/mongo/keyfile
-      "
-    ports:
-      - "27017:27017"
-    volumes:
-      - ./cmi-db:/data/db
-      - ./backup:/backup
-      - ./mongo-init:/docker-entrypoint-initdb.d
-      - ./mongo-keyfile:/run/mongo-keyfile:ro
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: cmi
-      MONGO_INITDB_DATABASE: CMI
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  mongo-init:
-    image: mongo:7.0
-    container_name: cmi-db-init
-    depends_on:
-      database:
-        condition: service_healthy
-    restart: on-failure
-    entrypoint: >
-      mongosh --host cmi-db --username admin --password cmi
-      --authenticationDatabase admin
-      --eval "try { rs.status(); print('Replica set already initialized') }
-              catch(e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'cmi-db:27017' }] });
-                         print('Replica set initialized') }"

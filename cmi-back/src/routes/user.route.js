@@ -1,11 +1,9 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const userModel = require('../models/user.model');
-const projectModel = require('../models/project.model');
 const env = require('../config/env');
 const { logging, log } = require('../services/log.service.js');
-const mongoose = require('mongoose');
+const { db, newId, hydrate, hydrateAll, transaction } = require('../db');
 
 const DUMMY_HASH = bcrypt.hashSync('cmi_dummy_unused_hash_value', 10);
 
@@ -18,51 +16,66 @@ function validatePassword(password) {
     return true;
 }
 
-router.get('/get/users', async (req, res) => {
+function getUserProjects(userId) {
+    return hydrateAll('projects', db.prepare(`
+        SELECT p.* FROM projects p
+        JOIN user_projects up ON up.projectId = p._id
+        WHERE up.userId = ? AND p.deleted = 0
+    `).all(userId));
+}
+
+router.get('/get/users', (req, res) => {
     try {
-        let users = await userModel.find({ deleted: false }).skip((parseInt(req.query.page) - 1) * parseInt(req.query.limit)).limit(parseInt(req.query.limit)).populate("projectId").exec();
-        let count = await userModel.countDocuments({ deleted: false }).exec();
+        const page  = parseInt(req.query.page)  || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const users = hydrateAll('users', db.prepare(`
+            SELECT * FROM users WHERE deleted = 0
+            ORDER BY username LIMIT ? OFFSET ?
+        `).all(limit, (page - 1) * limit));
+        const count = db.prepare('SELECT COUNT(*) AS c FROM users WHERE deleted = 0').get().c;
         return res.json({ users, count });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.get('/get/user', async (req, res) => {
+router.get('/get/user', (req, res) => {
     try {
-        let user = await userModel.findOne({ $and: [{ deleted: false }, { _id: req.query.userId }] }).populate('projects').exec();
+        const user = hydrate('users', db.prepare('SELECT * FROM users WHERE _id = ? AND deleted = 0').get(req.query.userId));
+        if (!user) return res.json(null);
+        user.projects = getUserProjects(user._id);
         return res.json(user);
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
 router.post('/create/user', async (req, res) => {
     try {
         if (!validatePassword(req.body.password)) {
             return res.status(logging.invalidParameters.code).json({ message: "La contraseña debe tener entre 8 y 20 caracteres, al menos una mayúscula, una minúscula, un número y un caracter especial (!@#$%^&*.)" });
         }
-        const user = new userModel(req.body);
-        let error = user.validateSync();
-        if (error) return res.status(logging.invalidParameters.code).json({ message: error.message });
-        let hash = await bcrypt.hash(req.body.password, parseInt(env.auth.saltRounds));
-        user.password = hash;
-        const savedUser = await userModel.create(user);
-        const token = jwt.sign({ userId: savedUser._id }, env.auth.jwtSecret, { expiresIn: env.auth.jwtExpirationTime });
-        return res.json({
-            message: "Usuario creado exitosamente",
-            userId: savedUser._id,
-            token
-        });
+        if (!req.body.fullName || !req.body.username) {
+            return res.status(logging.invalidParameters.code).json({ message: "Nombre y usuario son requeridos" });
+        }
+
+        const existing = db.prepare('SELECT _id FROM users WHERE username = ?').get(req.body.username);
+        if (existing) return res.status(logging.duplicatedAction.code).json({ message: "El usuario ya existe" });
+
+        const hash = await bcrypt.hash(req.body.password, parseInt(env.auth.saltRounds));
+        const userId = newId();
+        db.prepare(`INSERT INTO users (_id, fullName, username, password, deleted) VALUES (?, ?, ?, ?, 0)`)
+            .run(userId, req.body.fullName, req.body.username, hash);
+
+        const token = jwt.sign({ userId }, env.auth.jwtSecret, { expiresIn: env.auth.jwtExpirationTime });
+        return res.json({ message: "Usuario creado exitosamente", userId, token });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
-        if (error.code == 11000) return res.status(logging.duplicatedAction.code).json({ message: "El usuario ya existe" });
-        if (error._message === 'Usuario inválido') return res.status(logging.duplicatedAction.code).json({ message: error.message });
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
 router.patch('/update/user', async (req, res) => {
     try {
@@ -71,89 +84,69 @@ router.patch('/update/user', async (req, res) => {
             if (!validatePassword(req.body.password)) {
                 return res.status(logging.invalidParameters.code).json({ message: "La contraseña debe tener entre 8 y 20 caracteres, al menos una mayúscula, una minúscula, un número y un caracter especial (!@#$%^&*.)" });
             }
-            let hash = await bcrypt.hash(req.body.password, parseInt(env.auth.saltRounds));
-            req.body.password = hash;
-        }
-        const savedUser = await userModel.updateOne({ _id: req.query.userId }, { $set: req.body }).exec()
-        if (savedUser.matchedCount === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el usuario" })
-        return res.json({
-            message: "Usuario actualizado exitosamente",
-        });
-    } catch (error) {
-        log(req, logging.internalServerError, error.message);
-        if (error.code == 11000) return res.status(logging.duplicatedAction.code).json({ message: "Usuario duplicado" })
-        if (error._message === 'Usuario inválido') return res.status(logging.duplicatedAction.code).json({ message: error.message })
-        return res.status(logging.internalServerError.code).json(logging.internalServerError);
-    }
-})
-
-router.delete('/delete/user', async (req, res) => {
-    try {
-        const savedUser = await userModel.updateOne({ _id: req.query.userId }, { deleted: true }).exec()
-        if (savedUser.matchedCount === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el usuario" })
-        return res.json({
-            message: "Usuario eliminado exitosamente",
-        });
-    } catch (error) {
-        log(req, logging.internalServerError, error.message);
-        return res.status(logging.internalServerError.code).json(logging.internalServerError);
-    }
-})
-
-router.post('/link/user', async (req, res) => {
-    try {
-
-        let user = await userModel.findOne({ $and: [{ deleted: false }, { username: req.query.username }] }).populate('projects').exec();
-        if (!user) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el usuario" })
-        
-        for (let project of user.projects) {
-            if (project._id.toString() === req.query.projectId) {
-                return res.status(logging.duplicatedAction.code).json({ message: "El usuario ya está vinculado al proyecto" });
-            }
+            req.body.password = await bcrypt.hash(req.body.password, parseInt(env.auth.saltRounds));
         }
 
-        let project = await projectModel.findOne({ _id: req.query.projectId }).exec();
-        if (!project) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el proyecto" })
-        user.projects.push(project._id);
-        await userModel.updateOne({
-            username: req.query.username
-        }, {
-            $set: {
-                projects: user.projects
-            }
-        }).exec();
+        const allowed = ['fullName', 'username', 'password'];
+        const fields = Object.keys(req.body).filter(k => allowed.includes(k));
+        if (fields.length === 0) return res.json({ message: "Usuario actualizado exitosamente" });
 
-        return res.json({
-            message: "Usuario vinculado exitosamente",
-        });
+        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        const values = fields.map(f => req.body[f]);
+        try {
+            const r = db.prepare(`UPDATE users SET ${setClause} WHERE _id = ?`).run(...values, req.query.userId);
+            if (r.changes === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el usuario" });
+        } catch (e) {
+            if (e.code === 'SQLITE_CONSTRAINT_UNIQUE') return res.status(logging.duplicatedAction.code).json({ message: "Usuario duplicado" });
+            throw e;
+        }
+
+        return res.json({ message: "Usuario actualizado exitosamente" });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.post('/unlink/user', async (req, res) => {
+router.delete('/delete/user', (req, res) => {
     try {
-        let user = await userModel.findOne({ $and: [{ deleted: false }, { username: req.query.username }] }).populate('projects').exec();
+        const r = db.prepare('UPDATE users SET deleted = 1 WHERE _id = ?').run(req.query.userId);
+        if (r.changes === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el usuario" });
+        return res.json({ message: "Usuario eliminado exitosamente" });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
+});
+
+router.post('/link/user', (req, res) => {
+    try {
+        const user = db.prepare('SELECT * FROM users WHERE username = ? AND deleted = 0').get(req.query.username);
         if (!user) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el usuario" });
 
-        let projectIndex = user.projects.findIndex(project => project._id.toString() === req.query.projectId);
-        if (projectIndex === -1) {
-            return res.status(logging.invalidParameters.code).json({ message: "El usuario no está asociado al proyecto" });
-        }
+        const project = db.prepare('SELECT _id FROM projects WHERE _id = ? AND deleted = 0').get(req.query.projectId);
+        if (!project) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el proyecto" });
 
-        user.projects.splice(projectIndex, 1);
-        await userModel.updateOne({
-            username: req.query.username
-        }, {
-            $set: {
-                projects: user.projects
-            }
-        }).exec();
+        const link = db.prepare('SELECT 1 FROM user_projects WHERE userId = ? AND projectId = ?').get(user._id, req.query.projectId);
+        if (link) return res.status(logging.duplicatedAction.code).json({ message: "El usuario ya está vinculado al proyecto" });
 
-        return res.json({
-            message: "Usuario desvinculado exitosamente",
-        });
+        db.prepare('INSERT INTO user_projects (userId, projectId) VALUES (?, ?)').run(user._id, req.query.projectId);
+        return res.json({ message: "Usuario vinculado exitosamente" });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
+});
+
+router.post('/unlink/user', (req, res) => {
+    try {
+        const user = db.prepare('SELECT * FROM users WHERE username = ? AND deleted = 0').get(req.query.username);
+        if (!user) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el usuario" });
+
+        const r = db.prepare('DELETE FROM user_projects WHERE userId = ? AND projectId = ?').run(user._id, req.query.projectId);
+        if (r.changes === 0) return res.status(logging.invalidParameters.code).json({ message: "El usuario no está asociado al proyecto" });
+
+        return res.json({ message: "Usuario desvinculado exitosamente" });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
@@ -162,37 +155,36 @@ router.post('/unlink/user', async (req, res) => {
 
 router.post('/signup', async (req, res) => {
     try {
-        let user = req.body;
-        if (!user.password || !user.username) return res.status(logging.invalidParameters.code).json(logging.invalidParameters);
-        if (!validatePassword(user.password)) {
+        const { username, password, fullName } = req.body;
+        if (!username || !password) return res.status(logging.invalidParameters.code).json(logging.invalidParameters);
+        if (!validatePassword(password)) {
             return res.status(logging.invalidParameters.code).json({ message: "La contraseña debe tener entre 8 y 20 caracteres, al menos una mayúscula, una minúscula, un número y un caracter especial (!@#$%^&*.)" });
         }
-        let hash = await bcrypt.hash(req.body.password, parseInt(env.auth.saltRounds));
-        user.password = hash;
-        let userSameEmail = await userModel.findOne({ email: req.body.email });
-        if (userSameEmail) {
-            return res.status(logging.duplicatedAction.code).json(logging.duplicatedAction);
-        }
-        let savedUser = await new userModel(user).save();
-        return res.json({
-            message: "Usuario creado exitosamente",
-            userId: savedUser._id.toString()
-        });
+
+        const existing = db.prepare('SELECT _id FROM users WHERE username = ?').get(username);
+        if (existing) return res.status(logging.duplicatedAction.code).json(logging.duplicatedAction);
+
+        const hash = await bcrypt.hash(password, parseInt(env.auth.saltRounds));
+        const userId = newId();
+        db.prepare(`INSERT INTO users (_id, fullName, username, password, deleted) VALUES (?, ?, ?, ?, 0)`)
+            .run(userId, fullName || username, username, hash);
+
+        return res.json({ message: "Usuario creado exitosamente", userId });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
 router.post('/login', async (req, res) => {
     try {
         if (!req.body.username || !req.body.password) return res.status(logging.invalidParameters.code).json(logging.invalidParameters);
-        let user = await userModel.findOne({ $and: [{ deleted: false }, { username: req.body.username }] }).exec();
+        const user = db.prepare('SELECT * FROM users WHERE username = ? AND deleted = 0').get(req.body.username);
         const hashToCompare = user ? user.password : DUMMY_HASH;
-        let hashResult = await bcrypt.compare(req.body.password, hashToCompare);
-        if (!user || !hashResult) return res.status(logging.authenticationError.code).json(logging.authenticationError);
+        const ok = await bcrypt.compare(req.body.password, hashToCompare);
+        if (!user || !ok) return res.status(logging.authenticationError.code).json(logging.authenticationError);
         const token = jwt.sign({ userId: user._id }, env.auth.jwtSecret, { expiresIn: env.auth.jwtExpirationTime });
-        return res.json({ userId: user._id.toString(), token });
+        return res.json({ userId: user._id, token });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);

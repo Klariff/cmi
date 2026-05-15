@@ -1,30 +1,37 @@
 const geoData = require('../config/geo-data');
-const Country = require('../models/country.model');
-const Department = require('../models/department.model');
-const City = require('../models/city.model');
-const Area = require('../models/area.model');
+const { db, newId } = require('../db');
 
-module.exports = async function seedGeoData() {
-    const count = await Country.countDocuments();
+module.exports = function seedGeoData() {
+    const count = db.prepare('SELECT COUNT(*) AS c FROM countries').get().c;
     if (count > 0) return;
 
     console.log('[geo-seed] Seeding geographic data...');
 
-    const country = await Country.create({ name: geoData.country });
+    const insertCountry    = db.prepare('INSERT INTO countries    (_id, name) VALUES (?, ?)');
+    const insertDepartment = db.prepare('INSERT INTO departments  (_id, name, countryId) VALUES (?, ?, ?)');
+    const insertCity       = db.prepare('INSERT INTO cities       (_id, name, departmentId) VALUES (?, ?, ?)');
+    const insertArea       = db.prepare('INSERT INTO areas        (_id, name, cityId) VALUES (?, ?, ?)');
 
-    for (const dept of geoData.departments) {
-        const department = await Department.create({ name: dept.name, countryId: country._id });
+    db.transaction(() => {
+        const countryId = newId();
+        insertCountry.run(countryId, geoData.country);
 
-        for (const cityName of dept.cities) {
-            const city = await City.create({ name: cityName, departmentId: department._id });
+        for (const dept of geoData.departments) {
+            const departmentId = newId();
+            insertDepartment.run(departmentId, dept.name, countryId);
 
-            if (cityName === 'Bogotá') {
-                for (const areaName of geoData.bogotaAreas) {
-                    await Area.create({ name: areaName, cityId: city._id });
+            for (const cityName of dept.cities) {
+                const cityId = newId();
+                insertCity.run(cityId, cityName, departmentId);
+
+                if (cityName === 'Bogotá') {
+                    for (const areaName of geoData.bogotaAreas) {
+                        insertArea.run(newId(), areaName, cityId);
+                    }
                 }
             }
         }
-    }
+    })();
 
     console.log('[geo-seed] Geographic data seeded successfully.');
 };

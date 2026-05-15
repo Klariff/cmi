@@ -1,91 +1,109 @@
 const router = require('express').Router();
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const cardModel = require('../models/card.model');
-const env = require('../config/env');
 const { logging, log } = require('../services/log.service.js');
-const entityFileJoiner = require('../utils/entityFileJoiner.js');
-const mongoose = require('mongoose');
+const { db, newId, hydrate, hydrateAll } = require('../db');
+const fileStorage = require('../storage/files');
 
-router.get('/get/cards', async (req, res) => {
+function withFiles(card) {
+    if (!card) return card;
+    card.files = card.imageId
+        ? [`/api/download/file?bucketName=card&fileId=${card.imageId}`]
+        : [];
+    return card;
+}
+
+router.get('/get/cards', (req, res) => {
     try {
-        let cards = await cardModel.find({ deleted: false, projectId: new mongoose.Types.ObjectId(req.query.projectId) }).sort({ code: 1 }).skip((parseInt(req.query.page) - 1) * parseInt(req.query.limit)).limit(parseInt(req.query.limit)).exec();
-        if (cards.length > 0) {
-            cards = await entityFileJoiner(cards, 'card');
-        }
-        let count = await cardModel.countDocuments({ deleted: false, projectId: new mongoose.Types.ObjectId(req.query.projectId) }).exec();
+        const page  = parseInt(req.query.page)  || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        let cards = hydrateAll('cards', db.prepare(`
+            SELECT * FROM cards WHERE deleted = 0 AND projectId = ?
+            ORDER BY code LIMIT ? OFFSET ?
+        `).all(req.query.projectId, limit, (page - 1) * limit));
+        cards = cards.map(withFiles);
+        const count = db.prepare('SELECT COUNT(*) AS c FROM cards WHERE deleted = 0 AND projectId = ?').get(req.query.projectId).c;
         return res.json({ cards, count });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.get('/get/card', async (req, res) => {
+router.get('/get/card', (req, res) => {
     try {
-        let card = await cardModel.findOne({ $and: [{ deleted: false }, { _id: req.query.cardId }] }).exec();
-        if (!card) return res.status(logging.invalidParameters.code).json({ message: "No se encontró la tarjeta" })
-        card = await entityFileJoiner(card, 'card');
-        return res.json(card);
+        let card = hydrate('cards', db.prepare('SELECT * FROM cards WHERE _id = ? AND deleted = 0').get(req.query.cardId));
+        if (!card) return res.status(logging.invalidParameters.code).json({ message: "No se encontró la tarjeta" });
+        return res.json(withFiles(card));
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.post('/create/card', async (req, res) => {
+router.post('/create/card', (req, res) => {
     try {
-        const card = new cardModel(req.body);
-        let error = card.validateSync();
-        if (error) return res.status(logging.invalidParameters.code).json({ message: error.message });
-        let previousCard = await cardModel.findOne({ projectId: new mongoose.Types.ObjectId(req.body.projectId), code: req.body.code, deleted: false }).exec();
-        if (previousCard) return res.status(logging.duplicatedAction.code).json({ message: "Ya existe una tarjeta con ese código" })
-        const savedCard = await cardModel.create(card);
-        return res.json({
-            message: "Tarjeta creado exitosamente",
-            id: savedCard._id
-        });
-    } catch (error) {
-        log(req, logging.internalServerError, error.message);
-        if (error._message === 'Tarjeta inválida') return res.status(logging.duplicatedAction.code).json({ message: error.message })
-        return res.status(logging.internalServerError.code).json(logging.internalServerError);
-    }
-})
-
-router.patch('/update/card', async (req, res) => {
-    try {
-        let updateCard = await cardModel.findOne({ _id: req.query.cardId }).exec();
-        if (!updateCard) return res.status(logging.invalidParameters.code).json({ message: "No se encontró la tarjeta" })
-        delete req.body._id;
-        let previousCard = await cardModel.find({ projectId: new mongoose.Types.ObjectId(req.body.projectId), code: req.body.code, deleted: false, static: req.body.static, _id: { $ne: new mongoose.Types.ObjectId(req.query.cardId) } }).exec();
-        if (previousCard.length > 0) return res.status(logging.duplicatedAction.code).json({ message: "Ya existe una tarjeta con ese código" })
-        await cardModel.updateOne({ _id: req.query.cardId }, { $set: req.body }).exec()
-        return res.json({
-            message: "Tarjeta actualizada exitosamente",
-        });
-    } catch (error) {
-        log(req, logging.internalServerError, error.message);
-        if (error._message === 'Tarjeta inválida') return res.status(logging.duplicatedAction.code).json({ message: error.message })
-        return res.status(logging.internalServerError.code).json(logging.internalServerError);
-    }
-})
-
-router.delete('/delete/card', async (req, res) => {
-    try {
-        const savedCard = await cardModel.updateOne({ _id: req.query.cardId }, { deleted: true }).exec()
-        if (savedCard.matchedCount === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró la tarjeta" })
-        let foundCard = await cardModel.findOne({ _id: req.query.cardId }).exec();
-        if (foundCard.imageId) {
-            await gfs["card"].delete(new mongoose.Types.ObjectId(foundCard.imageId));
-            await cardModel.updateOne({ _id: req.query.cardId }, { imageId: undefined }).exec()
+        const { name, code, projectId, onlyShowImage } = req.body;
+        if (!name || code == null || !projectId) {
+            return res.status(logging.invalidParameters.code).json({ message: "Faltan parámetros requeridos" });
         }
-        return res.json({
-            message: "Tarjeta eliminada exitosamente",
-        });
+        const dup = db.prepare('SELECT _id FROM cards WHERE projectId = ? AND code = ? AND deleted = 0').get(projectId, code);
+        if (dup) return res.status(logging.duplicatedAction.code).json({ message: "Ya existe una tarjeta con ese código" });
+
+        const id = newId();
+        db.prepare(`INSERT INTO cards (_id, name, code, deleted, onlyShowImage, imageId, projectId) VALUES (?, ?, ?, 0, ?, NULL, ?)`)
+            .run(id, name, code, onlyShowImage ? 1 : 0, projectId);
+        return res.json({ message: "Tarjeta creado exitosamente", id });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
+
+router.patch('/update/card', (req, res) => {
+    try {
+        const card = db.prepare('SELECT * FROM cards WHERE _id = ?').get(req.query.cardId);
+        if (!card) return res.status(logging.invalidParameters.code).json({ message: "No se encontró la tarjeta" });
+
+        delete req.body._id;
+
+        if (req.body.code != null && req.body.projectId) {
+            const dup = db.prepare(`
+                SELECT _id FROM cards
+                WHERE projectId = ? AND code = ? AND deleted = 0 AND _id != ?
+            `).get(req.body.projectId, req.body.code, req.query.cardId);
+            if (dup) return res.status(logging.duplicatedAction.code).json({ message: "Ya existe una tarjeta con ese código" });
+        }
+
+        const allowed = ['name', 'code', 'onlyShowImage', 'imageId', 'projectId'];
+        const fields = Object.keys(req.body).filter(k => allowed.includes(k));
+        if (fields.length === 0) return res.json({ message: "Tarjeta actualizada exitosamente" });
+
+        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        const values = fields.map(f => {
+            const v = req.body[f];
+            return (f === 'onlyShowImage') ? (v ? 1 : 0) : v;
+        });
+        db.prepare(`UPDATE cards SET ${setClause} WHERE _id = ?`).run(...values, req.query.cardId);
+
+        return res.json({ message: "Tarjeta actualizada exitosamente" });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
+});
+
+router.delete('/delete/card', (req, res) => {
+    try {
+        const card = db.prepare('SELECT * FROM cards WHERE _id = ?').get(req.query.cardId);
+        if (!card) return res.status(logging.invalidParameters.code).json({ message: "No se encontró la tarjeta" });
+
+        db.prepare('UPDATE cards SET deleted = 1, imageId = NULL WHERE _id = ?').run(req.query.cardId);
+        if (card.imageId) fileStorage.delete('card', card.imageId);
+
+        return res.json({ message: "Tarjeta eliminada exitosamente" });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
+});
 
 module.exports = router;

@@ -4,6 +4,7 @@ const { logging } = require('../services/log.service');
 
 const PUBLIC_PATHS = [
     { method: 'POST', path: '/api/login' },
+    { method: 'POST', path: '/api/signup' },
     { method: 'POST', path: '/api/create/user' },
     { method: 'GET',  path: '/api/get/project' },
     { method: 'GET',  path: '/api/get/cards' },

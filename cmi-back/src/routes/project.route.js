@@ -1,160 +1,153 @@
 const router = require('express').Router();
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const projectModel = require('../models/project.model');
-const cardModel = require('../models/card.model');
-const categoryModel = require('../models/category.model');
-const classificationModel = require('../models/classification.model');
-const participantModel = require('../models/participant.model');
-const userModel = require('../models/user.model');
-const env = require('../config/env');
 const { logging, log } = require('../services/log.service.js');
-const mongoose = require('mongoose');
+const { db, newId, hydrate, hydrateAll } = require('../db');
+const fileStorage = require('../storage/files');
 
-router.get('/get/projects', async (req, res) => {
+router.get('/get/projects', (req, res) => {
     try {
-        let projects = await projectModel.find({ deleted: false }).skip((parseInt(req.query.page) - 1) * parseInt(req.query.limit)).limit(parseInt(req.query.limit)).exec();
-        let count = await projectModel.countDocuments({ deleted: false }).exec();
+        const page  = parseInt(req.query.page)  || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const projects = hydrateAll('projects', db.prepare(
+            'SELECT * FROM projects WHERE deleted = 0 ORDER BY name LIMIT ? OFFSET ?'
+        ).all(limit, (page - 1) * limit));
+        const count = db.prepare('SELECT COUNT(*) AS c FROM projects WHERE deleted = 0').get().c;
         return res.json({ projects, count });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.get('/get/projects/user', async (req, res) => {
+router.get('/get/projects/user', (req, res) => {
     try {
-        let projectsIds = await (await userModel.findOne({ $and: [{ deleted: false }, { _id: req.query.userId }] }).exec()).projects;
-        let projects = await projectModel.find({ $and: [{ deleted: false }, { _id: { $in: projectsIds } }] }).skip((parseInt(req.query.page) - 1) * parseInt(req.query.limit)).limit(parseInt(req.query.limit)).exec();
+        const page  = parseInt(req.query.page)  || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const projects = hydrateAll('projects', db.prepare(`
+            SELECT p.* FROM projects p
+            JOIN user_projects up ON up.projectId = p._id
+            WHERE up.userId = ? AND p.deleted = 0
+            ORDER BY p.name LIMIT ? OFFSET ?
+        `).all(req.query.userId, limit, (page - 1) * limit));
         return res.json(projects);
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.get('/get/project', async (req, res) => {
+router.get('/get/project', (req, res) => {
     try {
-        if (!req.query.projectId || req.query.projectId == 'null') return res.status(logging.invalidParameters.code).json({ message: "El parametro projectId es requerido" });
-        let project = await projectModel.findOne({ $and: [{ deleted: false }, { _id: req.query.projectId }] }).exec();
-        return res.json(project);
+        if (!req.query.projectId || req.query.projectId == 'null') {
+            return res.status(logging.invalidParameters.code).json({ message: "El parametro projectId es requerido" });
+        }
+        const project = hydrate('projects', db.prepare(
+            'SELECT * FROM projects WHERE _id = ? AND deleted = 0'
+        ).get(req.query.projectId));
+        return res.json(project || null);
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.post('/create/project', async (req, res) => {
+router.post('/create/project', (req, res) => {
     try {
-        const project = new projectModel(req.body);
-        let error = project.validateSync();
-        if (error) return res.status(logging.invalidParameters.code).json({ message: error.message });
-        const savedProject = await projectModel.create(project);
-        const user = await userModel.findById(req.body.userId);
-        user.projects.push(savedProject._id);
-        await user.save();
-        return res.json({
-            message: "Proyecto creado exitosamente",
-            id: savedProject._id
-        });
+        const { name, minOpenQuestionsCnt, introductionText, endingText, userId } = req.body;
+        if (!name || minOpenQuestionsCnt == null || !introductionText || !endingText) {
+            return res.status(logging.invalidParameters.code).json({ message: "Faltan parámetros requeridos" });
+        }
+        if (!userId) return res.status(logging.invalidParameters.code).json({ message: "userId es requerido" });
+
+        const projectId = newId();
+        db.transaction(() => {
+            db.prepare(`
+                INSERT INTO projects (_id, name, minOpenQuestionsCnt, introductionText, endingText, videoId, deleted)
+                VALUES (?, ?, ?, ?, ?, NULL, 0)
+            `).run(projectId, name, minOpenQuestionsCnt, introductionText, endingText);
+
+            db.prepare('INSERT INTO user_projects (userId, projectId) VALUES (?, ?)').run(userId, projectId);
+        })();
+
+        return res.json({ message: "Proyecto creado exitosamente", id: projectId });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
-        if (error._message === 'Proyecto inválido') return res.status(logging.duplicatedAction.code).json({ message: error.message })
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.patch('/update/project', async (req, res) => {
+router.patch('/update/project', (req, res) => {
     try {
         delete req.body._id;
 
+        const allowed = ['name', 'minOpenQuestionsCnt', 'introductionText', 'endingText', 'videoId'];
+        const fields = Object.keys(req.body).filter(k => allowed.includes(k));
+        if (fields.length === 0) return res.json({ message: "Proyecto actualizado exitosamente" });
+
+        // Detect previous video that should be deleted from disk on this update.
         let previousVideoId = null;
         if ('videoId' in req.body) {
-            const current = await projectModel.findOne({ _id: req.query.projectId }).exec();
-            if (current && current.videoId && (req.body.videoId === null || (req.body.videoId && req.body.videoId.toString() !== current.videoId.toString()))) {
-                previousVideoId = current.videoId;
+            const current = db.prepare('SELECT videoId FROM projects WHERE _id = ?').get(req.query.projectId);
+            if (current && current.videoId) {
+                const newVal = req.body.videoId;
+                if (newVal === null || (newVal && newVal.toString() !== current.videoId.toString())) {
+                    previousVideoId = current.videoId;
+                }
             }
         }
 
-        const savedProject = await projectModel.updateOne({ _id: req.query.projectId }, { $set: req.body }).exec()
-        if (savedProject.matchedCount === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el parámetro" })
+        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        const values = fields.map(f => req.body[f]);
+        const r = db.prepare(`UPDATE projects SET ${setClause} WHERE _id = ?`).run(...values, req.query.projectId);
+        if (r.changes === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el parámetro" });
 
-        if (previousVideoId) {
-            try { await gfs["project"].delete(new mongoose.Types.ObjectId(previousVideoId)); } catch (e) {}
+        if (previousVideoId) fileStorage.delete('project', previousVideoId);
+
+        return res.json({ message: "Proyecto actualizado exitosamente" });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
+});
+
+router.delete('/delete/project', (req, res) => {
+    try {
+        const projectId = req.query.projectId;
+
+        // Gather files before deleting rows.
+        const cards = db.prepare('SELECT imageId FROM cards WHERE projectId = ?').all(projectId);
+        const project = db.prepare('SELECT videoId FROM projects WHERE _id = ?').get(projectId);
+
+        db.transaction(() => {
+            // FK ON DELETE CASCADE handles cards/categories/classifications/participants/junctions.
+            db.prepare('DELETE FROM projects WHERE _id = ?').run(projectId);
+        })();
+
+        // Delete files on disk after the DB transaction commits.
+        for (const c of cards) {
+            if (c.imageId) fileStorage.delete('card', c.imageId);
         }
+        if (project && project.videoId) fileStorage.delete('project', project.videoId);
 
-        return res.json({
-            message: "Proyecto actualizado exitosamente",
-        });
+        return res.json({ message: "Proyecto eliminado exitosamente" });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
-        if (error._message === 'Proyecto inválido') return res.status(logging.duplicatedAction.code).json({ message: error.message })
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
-})
+});
 
-router.delete('/delete/project', async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+router.delete('/clear/project', (req, res) => {
     try {
-        const projectObjectId = new mongoose.Types.ObjectId(req.query.projectId);
-
-        const cards = await cardModel.find({ projectId: projectObjectId }).session(session).exec();
-        const imagesDeletions = cards
-            .filter(card => card.imageId)
-            .map(card => gfs["card"].delete(new mongoose.Types.ObjectId(card.imageId)));
-
-        const project = await projectModel.findOne({ _id: projectObjectId }).session(session).exec();
-        const videoDeletion = project && project.videoId
-            ? [gfs["project"].delete(new mongoose.Types.ObjectId(project.videoId)).catch(() => {})]
-            : [];
-
-        await Promise.all([
-            ...imagesDeletions,
-            ...videoDeletion,
-            cardModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
-            categoryModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
-            classificationModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
-            participantModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
-            projectModel.deleteMany({ _id: req.query.projectId }).session(session).exec(),
-        ]);
-
-        await session.commitTransaction();
-        return res.json({
-            message: "Proyecto eliminado exitosamente",
-        });
+        const projectId = req.query.projectId;
+        db.transaction(() => {
+            db.prepare('DELETE FROM categories       WHERE projectId = ? AND static = 0').run(projectId);
+            db.prepare('DELETE FROM classifications  WHERE projectId = ? AND static = 0').run(projectId);
+            db.prepare('DELETE FROM participants     WHERE projectId = ?').run(projectId);
+        })();
+        return res.json({ message: "Proyecto depurado exitosamente" });
     } catch (error) {
-        await session.abortTransaction();
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
-    } finally {
-        session.endSession();
     }
-})
-
-router.delete('/clear/project', async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-        const projectObjectId = new mongoose.Types.ObjectId(req.query.projectId);
-
-        await Promise.all([
-            categoryModel.deleteMany({ projectId: projectObjectId, static: false }).session(session).exec(),
-            classificationModel.deleteMany({ projectId: projectObjectId, static: false }).session(session).exec(),
-            participantModel.deleteMany({ projectId: projectObjectId }).session(session).exec(),
-        ]);
-
-        await session.commitTransaction();
-        return res.json({
-            message: "Proyecto depurado exitosamente",
-        });
-    } catch (error) {
-        await session.abortTransaction();
-        log(req, logging.internalServerError, error.message);
-        return res.status(logging.internalServerError.code).json(logging.internalServerError);
-    } finally {
-        session.endSession();
-    }
-})
+});
 
 module.exports = router;

@@ -1,24 +1,34 @@
 const router = require('express').Router();
-const participantModel = require('../models/participant.model');
 const { logging, log } = require('../services/log.service.js');
-const mongoose = require('mongoose');
+const { db, newId, hydrate, hydrateAll } = require('../db');
 
-const LOCATION_POPULATE = [
-    { path: 'countryId', select: 'name' },
-    { path: 'departmentId', select: 'name' },
-    { path: 'cityId', select: 'name' },
-    { path: 'areaId', select: 'name' },
-];
+// Replace location FK ids with `{ _id, name }` objects to mimic mongoose populate.
+function populateLocations(p) {
+    if (!p) return p;
+    const fields = [
+        ['countryId',    'countries'],
+        ['departmentId', 'departments'],
+        ['cityId',       'cities'],
+        ['areaId',       'areas'],
+    ];
+    for (const [field, table] of fields) {
+        if (p[field]) {
+            const row = db.prepare(`SELECT _id, name FROM ${table} WHERE _id = ?`).get(p[field]);
+            p[field] = row || null;
+        }
+    }
+    return p;
+}
 
-router.get('/get/participants', async (req, res) => {
+router.get('/get/participants', (req, res) => {
     try {
-        let participants = await participantModel
-            .find({ deleted: false, projectId: new mongoose.Types.ObjectId(req.query.projectId) })
-            .populate(LOCATION_POPULATE)
-            .skip((parseInt(req.query.page) - 1) * parseInt(req.query.limit))
-            .limit(parseInt(req.query.limit))
-            .exec();
-        let count = await participantModel.countDocuments({ deleted: false, projectId: new mongoose.Types.ObjectId(req.query.projectId) }).exec();
+        const page  = parseInt(req.query.page)  || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        const participants = hydrateAll('participants', db.prepare(`
+            SELECT * FROM participants WHERE deleted = 0 AND projectId = ?
+            ORDER BY surveyDate DESC LIMIT ? OFFSET ?
+        `).all(req.query.projectId, limit, (page - 1) * limit)).map(populateLocations);
+        const count = db.prepare('SELECT COUNT(*) AS c FROM participants WHERE deleted = 0 AND projectId = ?').get(req.query.projectId).c;
         return res.json({ participants, count });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
@@ -26,66 +36,77 @@ router.get('/get/participants', async (req, res) => {
     }
 });
 
-router.get('/get/participant', async (req, res) => {
+router.get('/get/participant', (req, res) => {
     try {
-        let participant = await participantModel
-            .findOne({ $and: [{ deleted: false }, { _id: req.query.participantId }] })
-            .populate(LOCATION_POPULATE)
-            .exec();
-        return res.json(participant);
+        const p = hydrate('participants', db.prepare(
+            'SELECT * FROM participants WHERE _id = ? AND deleted = 0'
+        ).get(req.query.participantId));
+        return res.json(p ? populateLocations(p) : null);
     } catch (error) {
         log(req, logging.internalServerError, error.message);
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
 });
 
-router.post('/create/participant', async (req, res) => {
-    try {
-        // Extract _id from nested location objects sent by the frontend
-        ['countryId', 'departmentId', 'cityId', 'areaId'].forEach(field => {
-            if (req.body[field] && typeof req.body[field] === 'object' && req.body[field]._id) {
-                req.body[field] = req.body[field]._id;
-            }
-            if (!req.body[field]) delete req.body[field];
-        });
+function flattenLocationObjects(body) {
+    for (const f of ['countryId', 'departmentId', 'cityId', 'areaId']) {
+        if (body[f] && typeof body[f] === 'object' && body[f]._id) body[f] = body[f]._id;
+        if (!body[f]) delete body[f];
+    }
+}
 
-        const participant = new participantModel(req.body);
-        let error = participant.validateSync();
-        if (error) return res.status(logging.invalidParameters.code).json({ message: error.message });
-        const savedParticipant = await participantModel.create(participant);
-        return res.json({
-            message: "Participante creado exitosamente",
-            id: savedParticipant._id
-        });
+router.post('/create/participant', (req, res) => {
+    try {
+        flattenLocationObjects(req.body);
+        const { fullName, age, gender, countryId, departmentId, cityId, projectId,
+                areaId, socialLevel, educationalLevel, observations } = req.body;
+
+        if (!fullName || age == null || !gender || !countryId || !departmentId || !cityId || !projectId) {
+            return res.status(logging.invalidParameters.code).json({ message: "Faltan parámetros requeridos" });
+        }
+
+        const id = newId();
+        db.prepare(`
+            INSERT INTO participants (_id, fullName, age, gender, socialLevel, educationalLevel,
+                                      surveyDate, countryId, departmentId, cityId, areaId,
+                                      observations, deleted, projectId)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, 0, ?)
+        `).run(id, fullName, age, gender, socialLevel || null, educationalLevel || null,
+               countryId, departmentId, cityId, areaId || null, observations || null, projectId);
+
+        return res.json({ message: "Participante creado exitosamente", id });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
-        if (error._message === 'Participante inválido') return res.status(logging.duplicatedAction.code).json({ message: error.message });
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
 });
 
-router.patch('/update/participant', async (req, res) => {
+router.patch('/update/participant', (req, res) => {
     try {
         delete req.body._id;
-        ['countryId', 'departmentId', 'cityId', 'areaId'].forEach(field => {
-            if (req.body[field] && typeof req.body[field] === 'object' && req.body[field]._id) {
-                req.body[field] = req.body[field]._id;
-            }
-        });
-        const savedParticipant = await participantModel.updateOne({ _id: req.query.participantId }, { $set: req.body }).exec();
-        if (savedParticipant.matchedCount === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el participante" });
+        flattenLocationObjects(req.body);
+
+        const allowed = ['fullName', 'age', 'gender', 'socialLevel', 'educationalLevel',
+                         'countryId', 'departmentId', 'cityId', 'areaId', 'observations', 'projectId'];
+        const fields = Object.keys(req.body).filter(k => allowed.includes(k));
+        if (fields.length === 0) return res.json({ message: "Participante actualizado exitosamente" });
+
+        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        const values = fields.map(f => req.body[f]);
+        const r = db.prepare(`UPDATE participants SET ${setClause} WHERE _id = ?`).run(...values, req.query.participantId);
+        if (r.changes === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el participante" });
+
         return res.json({ message: "Participante actualizado exitosamente" });
     } catch (error) {
         log(req, logging.internalServerError, error.message);
-        if (error._message === 'Participant validation failed') return res.status(logging.duplicatedAction.code).json({ message: error.message });
         return res.status(logging.internalServerError.code).json(logging.internalServerError);
     }
 });
 
-router.delete('/delete/participant', async (req, res) => {
+router.delete('/delete/participant', (req, res) => {
     try {
-        const savedParticipant = await participantModel.updateOne({ _id: req.query.participantId }, { deleted: true }).exec();
-        if (savedParticipant.matchedCount === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el participante" });
+        const r = db.prepare('UPDATE participants SET deleted = 1 WHERE _id = ?').run(req.query.participantId);
+        if (r.changes === 0) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el participante" });
         return res.json({ message: "Participante eliminado exitosamente" });
     } catch (error) {
         log(req, logging.internalServerError, error.message);

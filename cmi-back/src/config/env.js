@@ -1,34 +1,33 @@
-const fs = require('fs');
-const dotenv = require('dotenv');
 const path = require('path');
 const Joi = require('joi');
 
-require('dotenv').config((process.argv[2] && !process.argv[2].toString().includes('/')) ? { path: path.join(__dirname, `../../.${process.argv[2]}.env`)} : { path: path.join(__dirname, `../../.env`)});
- 
-const envVarsSchema = Joi.object()
-.keys({
+require('dotenv').config(
+    (process.argv[2] && !process.argv[2].toString().includes('/'))
+        ? { path: path.join(__dirname, `../../.${process.argv[2]}.env`) }
+        : { path: path.join(__dirname, `../../.env`) }
+);
+
+const envVarsSchema = Joi.object().keys({
     NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
-    PORT: Joi.number().default(3000),
+    PORT: Joi.number().default(4000),
     HTTPS: Joi.boolean().default(false),
     BASE_URL: Joi.string().required().description('API base URL'),
     JWT_EXPIRATION_TIME: Joi.string().required().description('JWT expiration time'),
     EPOCH: Joi.string().required().description('Epoch time'),
     SALT_ROUNDS: Joi.number().required().description('Salt rounds'),
     JWT_SECRET: Joi.string().required().description('JWT secret'),
-    MONGODB_URI: Joi.string().required().description('Mongo DB url'),
-    BUCKETS: Joi.string().required().description('Buckets'),
-})
-.unknown();
+
+    // SQLite + file storage paths. Default to a `data/` directory next to the backend.
+    SQLITE_PATH: Joi.string().default(path.join(__dirname, '../../data/cmi.db')),
+    UPLOAD_DIR:  Joi.string().default(path.join(__dirname, '../../data/uploads')),
+}).unknown();
 
 const { value: envVars, error } = envVarsSchema.prefs({ errors: { label: 'key' } }).validate(process.env);
-
-if (error) {
-	throw new Error(`Config validation error: ${error.message}`);
-}
+if (error) throw new Error(`Config validation error: ${error.message}`);
 
 module.exports = {
     nodeEnv: envVars.NODE_ENV,
-	port: envVars.PORT,
+    port: envVars.PORT,
     https: envVars.HTTPS,
     baseUrl: envVars.BASE_URL,
     auth: {
@@ -38,9 +37,11 @@ module.exports = {
         jwtSecret: envVars.JWT_SECRET,
     },
     database: {
-		uri: envVars.MONGODB_URI,
-        buckets: envVars.BUCKETS.split(','),
-	},
+        path: envVars.SQLITE_PATH,
+    },
+    storage: {
+        uploadDir: envVars.UPLOAD_DIR,
+    },
     email: {
         host: envVars.EMAIL_HOST,
         user: envVars.EMAIL_USER,
@@ -49,4 +50,4 @@ module.exports = {
         sender: envVars.EMAIL_SENDER,
         admin: envVars.EMAIL_ADMIN,
     },
-}
+};
