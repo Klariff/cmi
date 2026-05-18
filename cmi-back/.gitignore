@@ -53,4 +53,7 @@ Thumbs.db
 main.log
 
 # Local SQLite database and uploads (per-installation, not source-controlled)
-data/public/
+data/
+
+# Built frontend bundle, copied into here by cmi-app/scripts/build-frontend.js
+public/
