@@ -7,7 +7,6 @@
     "tauri": "cargo tauri",
     "dev": "cargo tauri dev",
     "build": "cargo tauri build",
-    "backend:start": "node ../cmi-back/src/index.js",
-    "frontend:build": "cd ../cmi-front && npm run build && rm -rf ../cmi-back/public && cp -r dist/cmi-front ../cmi-back/public"
+    "build:frontend": "node scripts/build-frontend.js"
   }
 }

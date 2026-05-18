@@ -23,9 +23,10 @@ case "$TRIPLE" in
         URL="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64"
         ;;
     x86_64-apple-darwin|aarch64-apple-darwin)
-        # macOS ships a single universal binary inside a .tgz.
+        ARCH=amd64
+        [[ "$TRIPLE" == aarch64-* ]] && ARCH=arm64
         TMP="$(mktemp -d)"
-        curl -fL -o "$TMP/cf.tgz" "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz"
+        curl -fL -o "$TMP/cf.tgz" "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-${ARCH}.tgz"
         tar -xzf "$TMP/cf.tgz" -C "$TMP"
         mv "$TMP/cloudflared" "$OUT"
         chmod +x "$OUT"

@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.klariff.cmi",
   "build": {
-    "beforeDevCommand": "npm --prefix cmi-back start",
+    "beforeDevCommand": "npm --prefix ../cmi-back start",
     "devUrl": "http://127.0.0.1:4000",
-    "beforeBuildCommand": "npm --prefix cmi-front run build && rm -rf cmi-back/public && cp -r cmi-front/dist/cmi-front cmi-back/public",
+    "beforeBuildCommand": "node scripts/build-frontend.js",
     "frontendDist": "../../cmi-back/public"
   },
   "app": {
