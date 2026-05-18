@@ -9,7 +9,8 @@
     {
       "identifier": "shell:allow-spawn",
       "allow": [
-        { "name": "cloudflared", "sidecar": true, "args": true }
+        { "name": "cloudflared", "sidecar": true, "args": true },
+        { "name": "node",        "sidecar": true, "args": true }
       ]
     }
   ]
