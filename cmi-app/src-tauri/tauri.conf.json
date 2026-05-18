@@ -40,6 +40,7 @@
     "resources": {
       "../../cmi-back/src":          "cmi-back/src",
       "../../cmi-back/node_modules": "cmi-back/node_modules",
+      "../../cmi-back/public":       "cmi-back/public",
       "../../cmi-back/package.json": "cmi-back/package.json"
     },
     "icon": [
