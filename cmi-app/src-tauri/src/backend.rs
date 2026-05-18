@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tauri::path::BaseDirectory;
 use tauri::{App, Manager};
+use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
 const PORT: &str = "4000";
@@ -27,8 +28,12 @@ pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let uploads = data_dir.join("uploads");
     let jwt_secret = read_or_create_secret(&data_dir.join("jwt.secret"))?;
 
+    eprintln!("[cmi] resource_dir = {}", resource_dir.display());
+    eprintln!("[cmi] entry        = {}", entry.display());
+    eprintln!("[cmi] data_dir     = {}", data_dir.display());
+
     let node = app.shell().sidecar("node")?;
-    let (_rx, _child) = node
+    let (mut rx, child) = node
         .args([entry.to_string_lossy().to_string()])
         .env("PORT", PORT)
         .env("NODE_ENV", "production")
@@ -42,15 +47,39 @@ pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .current_dir(&resource_dir)
         .spawn()?;
 
-    // Wait up to ~5s for the server to bind. If it doesn't come up the
+    // Dropping CommandChild kills the child process, so leak it for the
+    // lifetime of the app. Tauri will reap the descendant when the parent
+    // process exits.
+    std::mem::forget(child);
+
+    // Drain stdout/stderr and forward to our own stderr so any backend
+    // crash shows up next to the Tauri logs.
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(b) => eprintln!("[backend] {}", String::from_utf8_lossy(&b).trim_end()),
+                CommandEvent::Stderr(b) => eprintln!("[backend!] {}", String::from_utf8_lossy(&b).trim_end()),
+                CommandEvent::Terminated(payload) => {
+                    eprintln!("[backend] terminated: {:?}", payload);
+                    break;
+                }
+                CommandEvent::Error(e) => eprintln!("[backend!] error: {e}"),
+                _ => {}
+            }
+        }
+    });
+
+    // Wait up to ~10s for the server to bind. If it doesn't come up the
     // webview will just show a connection error, which we let surface so
     // the user knows something is broken (rather than hanging silently).
-    for _ in 0..50 {
+    for _ in 0..100 {
         if TcpStream::connect(("127.0.0.1", PORT.parse::<u16>().unwrap())).is_ok() {
+            eprintln!("[cmi] backend ready");
             return Ok(());
         }
         std::thread::sleep(Duration::from_millis(100));
     }
+    eprintln!("[cmi] backend did not start in time");
     Ok(())
 }
 
