@@ -8,14 +8,14 @@ require('dotenv').config(
 );
 
 const envVarsSchema = Joi.object().keys({
-    NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
+    NODE_ENV: Joi.string().valid('production', 'development', 'test').default('production'),
     PORT: Joi.number().default(4000),
     HTTPS: Joi.boolean().default(false),
-    BASE_URL: Joi.string().default('127.0.0.1:4000').description('API base URL'),
-    JWT_EXPIRATION_TIME: Joi.string().required().description('JWT expiration time'),
-    EPOCH: Joi.string().required().description('Epoch time'),
-    SALT_ROUNDS: Joi.number().required().description('Salt rounds'),
-    JWT_SECRET: Joi.string().required().description('JWT secret'),
+    BASE_URL: Joi.string().default('127.0.0.1:4000'),
+    JWT_EXPIRATION_TIME: Joi.string().default('30d'),
+    EPOCH: Joi.string().default('1512000000000'),
+    SALT_ROUNDS: Joi.number().default(10),
+    JWT_SECRET: Joi.string().default('cmi-default-jwt-secret-change-me'),
 
     // SQLite + file storage paths. Default to a `data/` directory next to the backend.
     SQLITE_PATH: Joi.string().default(path.join(__dirname, '../../data/cmi.db')),

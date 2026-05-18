@@ -37,7 +37,12 @@ app.post('/api/echo', (req, res) => res.json(req.body));
 const PUBLIC_DIR = path.join(__dirname, '../public');
 if (fs.existsSync(PUBLIC_DIR)) {
     app.use(express.static(PUBLIC_DIR, { index: false }));
-    app.get(/^\/(?!api\/).*/, (req, res) => {
+    // SPA fallback: any non-API GET that didn't match a static file gets index.html.
+    // Using a plain middleware here (rather than `app.get(regex, ...)`) because
+    // Express 5 reads the path argument as a literal string, breaking regex routes.
+    app.use((req, res, next) => {
+        if (req.method !== 'GET') return next();
+        if (req.path.startsWith('/api/')) return next();
         res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
     });
 }
