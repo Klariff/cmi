@@ -14,7 +14,11 @@
     </div>
 
     <div *ngIf="url && !error" class="url-block">
-        <p class="hint">Comparte este enlace con tus participantes. Funciona mientras esta app esté abierta.</p>
+        <p class="hint">Comparte este enlace con tus participantes. Funciona mientras esta app esté abierta y el equipo esté encendido.</p>
+        <div class="warn-box">
+            <mat-icon>info</mat-icon>
+            <span>Mientras el enlace esté activo, el equipo no entrará en suspensión automática para mantener la conexión.</span>
+        </div>
 
         <div *ngIf="participantUrl" class="url-row">
             <label>Enlace para participantes</label>

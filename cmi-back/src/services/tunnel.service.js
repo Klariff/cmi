@@ -12,6 +12,38 @@ const { spawn } = require('child_process');
 
 let child = null;
 let url = null;
+let keepAwake = null;
+
+// Prevent the host machine from sleeping while the public link is live.
+// macOS: `caffeinate -di` blocks display + system idle sleep.
+// Windows: spawn powershell that calls SetThreadExecutionState.
+// Linux: rely on `systemd-inhibit` if available.
+function startKeepAwake() {
+    if (keepAwake) return;
+    try {
+        if (process.platform === 'darwin') {
+            keepAwake = spawn('caffeinate', ['-di'], { stdio: 'ignore' });
+        } else if (process.platform === 'win32') {
+            keepAwake = spawn('powershell.exe', [
+                '-NoProfile', '-Command',
+                "Add-Type -Name P -Namespace W -MemberDefinition '[DllImport(\"kernel32.dll\")] public static extern uint SetThreadExecutionState(uint esFlags);'; [W.P]::SetThreadExecutionState(0x80000003); while($true) { Start-Sleep -Seconds 60 }",
+            ], { stdio: 'ignore' });
+        } else {
+            keepAwake = spawn('systemd-inhibit', ['--what=idle:sleep', '--why=CMI public link active', 'sleep', 'infinity'], { stdio: 'ignore' });
+        }
+        keepAwake.on('error', () => { keepAwake = null; });
+        keepAwake.on('exit', () => { keepAwake = null; });
+    } catch (_) {
+        keepAwake = null;
+    }
+}
+
+function stopKeepAwake() {
+    if (keepAwake) {
+        try { keepAwake.kill(); } catch (_) {}
+        keepAwake = null;
+    }
+}
 
 function isAvailable() {
     return !!process.env.CLOUDFLARED_PATH;
@@ -25,6 +57,8 @@ function start() {
     return new Promise((resolve, reject) => {
         if (!isAvailable()) return reject(new Error('cloudflared no está disponible'));
         if (url) return resolve(url);
+
+        startKeepAwake();
 
         const bin = process.env.CLOUDFLARED_PATH;
         const proc = spawn(bin, [
@@ -75,6 +109,7 @@ function stop() {
         child = null;
     }
     url = null;
+    stopKeepAwake();
 }
 
 // Make sure the cloudflared child dies when the backend does.
