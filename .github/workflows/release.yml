@@ -74,20 +74,26 @@ jobs:
       - name: Install backend dependencies
         shell: bash
         working-directory: cmi-back
+        # npm_config_arch / npm_config_target_arch are exported on the job,
+        # so prebuild-install (invoked by better-sqlite3's install script)
+        # downloads the prebuild for the dmg's target arch instead of the
+        # runner's host arch.
         run: npm install --omit=dev
 
-      - name: Force-fetch better-sqlite3 prebuild for ${{ matrix.npm_arch }}
-        # Defensive: even with npm_config_arch set above, the install
-        # script can fall back to the host arch on some hosts. Explicitly
-        # re-fetch the prebuild for the target arch so we never ship a
-        # mismatched .node file.
+      - name: Verify better-sqlite3 architecture
+        if: runner.os != 'Windows'
         shell: bash
-        working-directory: cmi-back/node_modules/better-sqlite3
+        working-directory: cmi-back
+        # Sanity check: catch arch mismatches at CI time instead of on a
+        # user's machine. Skip on Windows where `file` output differs.
         run: |
-          rm -rf build
-          npx --no-install prebuild-install --runtime napi --arch ${{ matrix.npm_arch }} --platform ${{ matrix.npm_platform }}
-          echo "--- final native module arch ---"
-          file build/Release/better_sqlite3.node
+          ARCH_OUT="$(file node_modules/better-sqlite3/build/Release/better_sqlite3.node)"
+          echo "$ARCH_OUT"
+          EXPECTED='${{ matrix.npm_arch == ''x64'' && ''x86_64'' || ''arm64'' }}'
+          if ! echo "$ARCH_OUT" | grep -q "$EXPECTED"; then
+            echo "::error::better-sqlite3 native module is not built for $EXPECTED (matrix.npm_arch=${{ matrix.npm_arch }})"
+            exit 1
+          fi
 
       - name: Install frontend dependencies
         run: npm ci || npm install
