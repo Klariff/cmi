@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Required so V8 (Node's JS engine) can allocate executable memory.
+         Without this, the bundled Node sidecar crashes with
+         "Failed to reserve virtual memory for CodeRange". -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- Lets the Node sidecar dlopen() its better-sqlite3 native module
+         even though the .node file isn't signed by the same identity. -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- Lets the Node sidecar honour DYLD_* env vars (cloudflared and
+         node both rely on a couple of these on macOS). -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+</dict>
+</plist>
