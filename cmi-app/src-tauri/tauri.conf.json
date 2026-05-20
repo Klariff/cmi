@@ -14,7 +14,7 @@
       {
         "label": "main",
         "title": "CMI",
-        "url": "http://127.0.0.1:4000",
+        "url": "http://127.0.0.1:4000/admin",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
