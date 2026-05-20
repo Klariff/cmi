@@ -8,13 +8,17 @@
 use std::fs;
 use std::net::TcpStream;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::time::Duration;
 use tauri::path::BaseDirectory;
 use tauri::{App, Manager};
-use tauri_plugin_shell::process::CommandEvent;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
 const PORT: &str = "4000";
+
+/// Holds the spawned Node sidecar so we can kill it on app exit.
+pub struct BackendChild(pub Mutex<Option<CommandChild>>);
 
 pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let resource_dir: PathBuf = app
@@ -28,9 +32,6 @@ pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let uploads = data_dir.join("uploads");
     let jwt_secret = read_or_create_secret(&data_dir.join("jwt.secret"))?;
 
-    // Locate the bundled cloudflared binary next to our own executable
-    // so the Express backend can spawn it directly (sidesteps the Tauri 2
-    // ACL, which blocks IPC from http://127.0.0.1 webviews).
     let cloudflared_path = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.join(if cfg!(windows) { "cloudflared.exe" } else { "cloudflared" })))
@@ -58,13 +59,12 @@ pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .current_dir(&resource_dir)
         .spawn()?;
 
-    // Dropping CommandChild kills the child process, so leak it for the
-    // lifetime of the app. Tauri will reap the descendant when the parent
-    // process exits.
-    std::mem::forget(child);
+    // Park the child handle in app state so kill_backend() can reach it
+    // from the RunEvent::Exit hook, otherwise dropping it here would kill
+    // the process immediately.
+    app.manage(BackendChild(Mutex::new(Some(child))));
 
-    // Drain stdout/stderr and forward to our own stderr so any backend
-    // crash shows up next to the Tauri logs.
+    // Drain stdout/stderr and forward to our own stderr.
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             match event {
@@ -80,9 +80,7 @@ pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Wait up to ~10s for the server to bind. If it doesn't come up the
-    // webview will just show a connection error, which we let surface so
-    // the user knows something is broken (rather than hanging silently).
+    // Wait up to ~10s for the server to bind.
     for _ in 0..100 {
         if TcpStream::connect(("127.0.0.1", PORT.parse::<u16>().unwrap())).is_ok() {
             eprintln!("[cmi] backend ready");
@@ -92,6 +90,17 @@ pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     }
     eprintln!("[cmi] backend did not start in time");
     Ok(())
+}
+
+/// Terminate the Node sidecar (and, transitively, its cloudflared child).
+/// Safe to call multiple times.
+pub fn kill(app: &tauri::AppHandle) {
+    if let Some(state) = app.try_state::<BackendChild>() {
+        if let Some(child) = state.0.lock().unwrap().take() {
+            eprintln!("[cmi] stopping backend");
+            let _ = child.kill();
+        }
+    }
 }
 
 fn read_or_create_secret(path: &std::path::Path) -> std::io::Result<String> {
@@ -118,8 +127,6 @@ fn getrandom(buf: &mut [u8]) -> std::io::Result<()> {
 
 #[cfg(windows)]
 fn getrandom(buf: &mut [u8]) -> std::io::Result<()> {
-    // Sufficient entropy for a per-installation JWT secret; not crypto-grade
-    // randomness, but the secret never leaves the user's machine in cleartext.
     use std::time::{SystemTime, UNIX_EPOCH};
     let mut seed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
