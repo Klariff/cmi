@@ -23,23 +23,32 @@ jobs:
             runner: macos-14
             target: aarch64-apple-darwin
             npm_arch: arm64
+            npm_platform: darwin
             args: "--target aarch64-apple-darwin"
           - label: macos-x64
-            # Run x86_64 on the same Apple Silicon runner instead of the
-            # macos-13 queue, which can sit unscheduled for hours. We
-            # cross-compile via rustup target + npm --target_arch.
+            # Cross-compile x86_64 from the Apple Silicon runner so we
+            # don't depend on the perpetually-queued macos-13 runner.
             runner: macos-14
             target: x86_64-apple-darwin
             npm_arch: x64
+            npm_platform: darwin
             args: "--target x86_64-apple-darwin"
           - label: windows-x64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
             npm_arch: x64
+            npm_platform: win32
             args: ""
     runs-on: ${{ matrix.runner }}
     env:
       TARGET: ${{ matrix.target }}
+      # prebuild-install (used by better-sqlite3 and friends) reads these
+      # env vars to pick the right native binary, so cross-compile builds
+      # bundle the correct .node files instead of the host's arch.
+      npm_config_arch: ${{ matrix.npm_arch }}
+      npm_config_target_arch: ${{ matrix.npm_arch }}
+      npm_config_platform: ${{ matrix.npm_platform }}
+      npm_config_target_platform: ${{ matrix.npm_platform }}
     steps:
       - uses: actions/checkout@v4
 
@@ -65,11 +74,20 @@ jobs:
       - name: Install backend dependencies
         shell: bash
         working-directory: cmi-back
-        # --target_arch tells prebuild-install (used by better-sqlite3) to
-        # download the binary matching the dmg's target architecture,
-        # which differs from the runner's host arch when cross-compiling.
+        run: npm install --omit=dev
+
+      - name: Force-fetch better-sqlite3 prebuild for ${{ matrix.npm_arch }}
+        # Defensive: even with npm_config_arch set above, the install
+        # script can fall back to the host arch on some hosts. Explicitly
+        # re-fetch the prebuild for the target arch so we never ship a
+        # mismatched .node file.
+        shell: bash
+        working-directory: cmi-back/node_modules/better-sqlite3
         run: |
-          npm install --omit=dev --target_arch=${{ matrix.npm_arch }} --target_platform=${{ runner.os == 'Windows' && 'win32' || (runner.os == 'macOS' && 'darwin' || 'linux') }}
+          rm -rf build
+          npx --no-install prebuild-install --runtime napi --arch ${{ matrix.npm_arch }} --platform ${{ matrix.npm_platform }}
+          echo "--- final native module arch ---"
+          file build/Release/better_sqlite3.node
 
       - name: Install frontend dependencies
         run: npm ci || npm install
