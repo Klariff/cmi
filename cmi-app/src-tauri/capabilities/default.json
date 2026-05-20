@@ -3,6 +3,9 @@
   "identifier": "default",
   "description": "Default permissions for the CMI desktop window.",
   "windows": ["main"],
+  "remote": {
+    "urls": ["http://127.0.0.1:4000/**"]
+  },
   "permissions": [
     "core:default",
     "shell:allow-open",
