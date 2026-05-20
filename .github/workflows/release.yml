@@ -109,6 +109,6 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "CMI ${{ github.ref_name }}"
           releaseBody: "Automated build for ${{ github.ref_name }}."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
