@@ -84,14 +84,20 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         working-directory: cmi-back
+        env:
+          NPM_ARCH: ${{ matrix.npm_arch }}
         # Sanity check: catch arch mismatches at CI time instead of on a
         # user's machine. Skip on Windows where `file` output differs.
         run: |
+          case "$NPM_ARCH" in
+            x64)   EXPECTED=x86_64 ;;
+            arm64) EXPECTED=arm64  ;;
+            *)     EXPECTED="$NPM_ARCH" ;;
+          esac
           ARCH_OUT="$(file node_modules/better-sqlite3/build/Release/better_sqlite3.node)"
           echo "$ARCH_OUT"
-          EXPECTED='${{ matrix.npm_arch == ''x64'' && ''x86_64'' || ''arm64'' }}'
           if ! echo "$ARCH_OUT" | grep -q "$EXPECTED"; then
-            echo "::error::better-sqlite3 native module is not built for $EXPECTED (matrix.npm_arch=${{ matrix.npm_arch }})"
+            echo "::error::better-sqlite3 native module is not built for $EXPECTED (npm_arch=$NPM_ARCH)"
             exit 1
           fi
 
