@@ -50,6 +50,57 @@ router.get('/get/project', (req, res) => {
     }
 });
 
+// Seed a fully-populated example project (Medio Ambiente) so a fresh
+// installation has something to play with without manual setup.
+router.post('/create/project/example', (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) return res.status(logging.invalidParameters.code).json({ message: "userId es requerido" });
+
+        const projectId = newId();
+        const introduction = "Estamos haciendo un estudio acerca de lo que las personas piensan sobre el medio ambiente. " +
+            "A continuación verás un conjunto de tarjetas con acciones cotidianas; tu tarea es agruparlas según los criterios que consideres relevantes.";
+        const ending = "¡Muchas gracias por tu participación!";
+
+        const cards = [
+            "Reciclar en casa",
+            "Comprar productos locales y de temporada",
+            "Pagar más por un producto ecológico",
+            "Hacer voluntariado ambiental",
+            "Tomar duchas en cinco minutos o menos",
+            "Comprar en tiendas locales",
+            "Participar activamente de un grupo ambientalista",
+            "Apagar las luces que dejé de utilizar",
+            "Votar por un alcalde que promueva la construcción de ciclo-rutas",
+            "Votar por un político que tenga su programa de gobierno orientado a mitigación y adaptación al cambio climático",
+            "Votar por consejales que apoyen políticas ambientales",
+            "Leer noticias sobre cambio climático",
+            "Reducir el consumo de carne",
+            "Usar bicicleta o transporte público",
+            "Compostar residuos orgánicos",
+        ];
+
+        db.transaction(() => {
+            db.prepare(`
+                INSERT INTO projects (_id, name, minOpenQuestionsCnt, introductionText, endingText, videoId, deleted)
+                VALUES (?, ?, ?, ?, ?, NULL, 0)
+            `).run(projectId, 'Ejemplo · Medio ambiente', 2, introduction, ending);
+            db.prepare('INSERT INTO user_projects (userId, projectId) VALUES (?, ?)').run(userId, projectId);
+
+            const cardStmt = db.prepare(`
+                INSERT INTO cards (_id, name, code, deleted, onlyShowImage, imageId, projectId)
+                VALUES (?, ?, ?, 0, 0, NULL, ?)
+            `);
+            cards.forEach((name, idx) => cardStmt.run(newId(), name, idx + 1, projectId));
+        })();
+
+        return res.json({ message: "Proyecto de ejemplo creado exitosamente", id: projectId });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
+});
+
 router.post('/create/project', (req, res) => {
     try {
         const { name, minOpenQuestionsCnt, introductionText, endingText, userId } = req.body;

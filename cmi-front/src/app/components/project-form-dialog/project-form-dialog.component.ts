@@ -19,6 +19,7 @@ export class ProjectFormDialogComponent implements OnInit {
   endingText = "";
   minOpenQuestionsCnt = 0;
   project: any;
+  useExample = false;
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public projectData: any,
@@ -72,6 +73,19 @@ export class ProjectFormDialogComponent implements OnInit {
   }
 
   submit() {
+    if (this.action === "create" && this.useExample) {
+      this.httpClient.post(`${environment.baseURL}create/project/example`, { userId: sessionStorage.getItem('userId') }).subscribe({
+        next: () => {
+          this.toastr.success('Proyecto de ejemplo creado');
+          this.matDialogRef.close();
+        },
+        error: () => {
+          this.toastr.error("Error al crear el proyecto de ejemplo", 'Error');
+        }
+      });
+      return;
+    }
+
     if (this.minOpenQuestionsCnt < 1) {
       this.toastr.error('El número mínimo de clasificaciones libres debe ser mayor a 0', 'Error');
       return;

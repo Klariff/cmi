@@ -82,6 +82,32 @@
     transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
   }
 
+  .page-note {
+    margin: 0 0 1.25rem 0;
+    padding: 0.75rem 1rem;
+    background: #fff8e1;
+    border-left: 3px solid #f9a825;
+    border-radius: 4px;
+    color: rgba(0, 0, 0, 0.7);
+    font-size: 0.9rem;
+    max-width: 900px;
+  }
+
+  .action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+
+    button mat-icon {
+      vertical-align: middle;
+      margin-right: 4px;
+      font-size: 18px;
+      height: 18px;
+      width: 18px;
+    }
+  }
+
   /* ===== Configuración (parameters page) ===== */
   .config-card {
     max-width: 900px;

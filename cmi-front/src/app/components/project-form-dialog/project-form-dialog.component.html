@@ -1,28 +1,36 @@
 <h1 mat-dialog-title>{{action == 'edit' ? "Edición proyecto" : "Creación proyecto"}}</h1>
-<div mat-dialog-content>
-  <mat-form-field style="width: 100%;">
+<div mat-dialog-content class="dialog-body">
+  <div *ngIf="action == 'create'" class="example-row">
+    <mat-checkbox [(ngModel)]="useExample" color="primary">
+      Crear un proyecto de ejemplo (Medio ambiente)
+    </mat-checkbox>
+    <p class="hint">
+      Se genera un proyecto pre-cargado con tarjetas, textos y configuración listos para probar.
+    </p>
+  </div>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-full">
     <mat-label>Nombre</mat-label>
-    <input matInput [(ngModel)]="name">
+    <input matInput [(ngModel)]="name" [disabled]="useExample">
   </mat-form-field>
-  <br>
-  <mat-form-field style="width: 100%;">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-full">
     <mat-label>Clasificaciones libres obligatorias</mat-label>
-    <input matInput type="number" [(ngModel)]="minOpenQuestionsCnt">
+    <input matInput type="number" [(ngModel)]="minOpenQuestionsCnt" [disabled]="useExample">
   </mat-form-field>
-  <br>
-  <mat-form-field style="width: 100%;">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-full">
     <mat-label>Texto introducción</mat-label>
-    <textarea matInput [(ngModel)]="introductionText" cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="1"  cdkAutosizeMaxRows="15"></textarea>
+    <textarea matInput [(ngModel)]="introductionText" [disabled]="useExample" cdkTextareaAutosize
+              cdkAutosizeMinRows="1" cdkAutosizeMaxRows="15"></textarea>
   </mat-form-field>
-  <br>
-  <mat-form-field style="width: 100%;">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-full">
     <mat-label>Texto final</mat-label>
-    <textarea matInput [(ngModel)]="endingText" cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="1"  cdkAutosizeMaxRows="15"></textarea>
+    <textarea matInput [(ngModel)]="endingText" [disabled]="useExample" cdkTextareaAutosize
+              cdkAutosizeMinRows="1" cdkAutosizeMaxRows="15"></textarea>
   </mat-form-field>
 </div>
 <mat-dialog-actions align="end">
-  <button mat-button color="primary" (click)="close()" style="margin-left: 1rem;">Cancelar</button>
-  <button mat-flat-button *ngIf="action=='edit'" color="primary" (click)="deleteResults()" style="margin-left: 1rem;">Eliminar resultados</button>
-  <button mat-flat-button *ngIf="action=='edit'" color="primary" (click)="copyAccessLink()" style="margin-left: 1rem;">Copiar link</button>
-  <button mat-flat-button color="primary" (click)="submit()" style="margin-left: 1rem;">Guardar</button>
+  <button mat-button color="primary" (click)="close()">Cancelar</button>
+  <button mat-flat-button *ngIf="action=='edit'" color="primary" (click)="deleteResults()">Eliminar resultados</button>
+  <button mat-flat-button *ngIf="action=='edit'" color="primary" (click)="copyAccessLink()">Copiar link</button>
+  <button mat-flat-button color="primary" (click)="submit()">{{ useExample ? 'Crear ejemplo' : 'Guardar' }}</button>
 </mat-dialog-actions>

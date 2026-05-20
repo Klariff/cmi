@@ -150,13 +150,21 @@
             </div>
             <div *ngIf="page == 'participants' && selectedProject != null" class="page">
                 <h1>Participantes</h1>
-                <h3>Nota: Cambiar clasificaciones, criterios o número de mínimo de clasificaciones libres obligatorias
-                    invalidará los resultados anteriormente generados.</h3>
-                <button mat-raised-button color="primary" (click)="downloadCSV()">Descargar Resultados (CSV)</button>
-                <button mat-raised-button color="primary" style="margin-left: 1rem;"
-                    (click)="downloadLabeledCSV()">Descargar Resultados Etiquetados (CSV)</button>
-                <button mat-raised-button color="primary" style="margin-left: 1rem;"
-                    (click)="downloadParticipants()">Descargar Participantes (XLSX)</button> <br><br>
+                <p class="page-note">
+                    Cambiar clasificaciones, criterios o número de mínimo de clasificaciones libres
+                    obligatorias invalidará los resultados anteriormente generados.
+                </p>
+                <div class="action-row">
+                    <button mat-stroked-button color="primary" (click)="downloadCSV()">
+                        <mat-icon>download</mat-icon> Resultados (CSV)
+                    </button>
+                    <button mat-stroked-button color="primary" (click)="downloadLabeledCSV()">
+                        <mat-icon>download</mat-icon> Resultados etiquetados (CSV)
+                    </button>
+                    <button mat-stroked-button color="primary" (click)="downloadParticipants()">
+                        <mat-icon>download</mat-icon> Participantes (XLSX)
+                    </button>
+                </div>
                 <div class="mat-elevation-z8">
                     <table mat-table [dataSource]="participantsDataSource" matSort>
                         <ng-container matColumnDef="fullName">
