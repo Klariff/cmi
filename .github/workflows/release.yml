@@ -22,9 +22,6 @@ jobs:
           - runner: macos-14        # Apple Silicon
             target: aarch64-apple-darwin
             args: "--target aarch64-apple-darwin"
-          - runner: macos-13        # Intel
-            target: x86_64-apple-darwin
-            args: "--target x86_64-apple-darwin"
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
             args: ""

@@ -64,10 +64,13 @@
     color: rgba(0, 0, 0, 0.75);
 
     mat-icon {
+        flex: 0 0 20px;
         font-size: 20px;
         height: 20px;
         width: 20px;
+        margin-top: 2px;
         color: #1976d2;
+        overflow: visible;
     }
 }
 

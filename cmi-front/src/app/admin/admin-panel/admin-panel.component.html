@@ -35,7 +35,7 @@
                         Configuración
                     </button><br>
                 </div>
-                <div>
+                <div *ngIf="!canShareLink">
                     <button id="copy-access-link" mat-button (click)="copyAccessLinkResearcher()" class="sidenav-item">
                         <mat-icon>file_copy</mat-icon>
                         Copiar link

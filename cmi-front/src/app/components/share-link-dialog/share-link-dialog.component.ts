@@ -42,8 +42,11 @@ export class ShareLinkDialogComponent implements OnInit, OnDestroy {
     // not kill the link. The user must press "Detener enlace" explicitly.
   }
 
+  adminUrl: string | null = null;
+
   private setUrl(url: string) {
     this.url = url;
+    this.adminUrl = `${url}/admin`;
     const projectId = sessionStorage.getItem('projectId');
     this.participantUrl = projectId ? `${url}/?projectId=${projectId}` : url;
   }

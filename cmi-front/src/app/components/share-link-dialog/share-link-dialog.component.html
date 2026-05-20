@@ -30,11 +30,11 @@
             </div>
         </div>
 
-        <div class="url-row">
-            <label>URL base (administrador)</label>
+        <div class="url-row" *ngIf="adminUrl">
+            <label>Enlace administrador</label>
             <div class="copy-row">
-                <input matInput [value]="url" readonly>
-                <button mat-icon-button (click)="copy(url)" title="Copiar">
+                <input matInput [value]="adminUrl" readonly>
+                <button mat-icon-button (click)="copy(adminUrl)" title="Copiar">
                     <mat-icon>content_copy</mat-icon>
                 </button>
             </div>
