@@ -1,37 +1,50 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { environment } from 'src/environments/environment';
 
-// Tauri 2 exposes `__TAURI_INTERNALS__.invoke` on window when the app is
-// running inside the desktop shell. In a regular browser this returns false
-// and all share-link UI stays hidden.
-function tauriInvoke(): ((cmd: string, args?: any) => Promise<any>) | null {
-  const w = window as any;
-  if (w.__TAURI_INTERNALS__ && typeof w.__TAURI_INTERNALS__.invoke === 'function') {
-    return (cmd: string, args?: any) => w.__TAURI_INTERNALS__.invoke(cmd, args);
-  }
-  return null;
-}
-
+/**
+ * Public-link manager. The backend exposes /api/tunnel/* endpoints only
+ * when running inside the desktop app (Tauri sets CLOUDFLARED_PATH for
+ * the bundled Node sidecar). In dev / SaaS mode the endpoints 404 and
+ * isAvailable() resolves to false, so the UI hides the share button.
+ */
 @Injectable({ providedIn: 'root' })
 export class ShareLinkService {
-  isAvailable(): boolean {
-    return tauriInvoke() !== null;
+  private cachedAvailable: boolean | null = null;
+
+  constructor(private readonly http: HttpClient) { }
+
+  async isAvailable(): Promise<boolean> {
+    if (this.cachedAvailable !== null) return this.cachedAvailable;
+    try {
+      await firstValueFrom(this.http.get(`${environment.baseURL}tunnel/available`));
+      this.cachedAvailable = true;
+    } catch {
+      this.cachedAvailable = false;
+    }
+    return this.cachedAvailable;
   }
 
   async startTunnel(): Promise<string> {
-    const invoke = tauriInvoke();
-    if (!invoke) throw new Error('Tauri no disponible');
-    return await invoke('start_tunnel');
+    const res = await firstValueFrom(
+      this.http.post<{ url: string }>(`${environment.baseURL}tunnel/start`, {})
+    );
+    return res.url;
   }
 
   async stopTunnel(): Promise<void> {
-    const invoke = tauriInvoke();
-    if (!invoke) return;
-    await invoke('stop_tunnel');
+    await firstValueFrom(this.http.post(`${environment.baseURL}tunnel/stop`, {}));
   }
 
   async getStatus(): Promise<string | null> {
-    const invoke = tauriInvoke();
-    if (!invoke) return null;
-    return await invoke('tunnel_status');
+    try {
+      const res = await firstValueFrom(
+        this.http.get<{ url: string | null }>(`${environment.baseURL}tunnel/status`)
+      );
+      return res.url;
+    } catch {
+      return null;
+    }
   }
 }

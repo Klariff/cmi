@@ -80,6 +80,26 @@ router.post('/create/project/example', (req, res) => {
             "Compostar residuos orgánicos",
         ];
 
+        // Static "default" classifications shown to every participant in the
+        // closed-questions phase, each with a few pre-set categories.
+        const classifications = [
+            {
+                name: 'Frecuencia',
+                indication: 'Clasifica las acciones según cuán seguido las realizas.',
+                categories: ['Nunca', 'A veces', 'Frecuentemente', 'Siempre'],
+            },
+            {
+                name: 'Importancia',
+                indication: 'Clasifica las acciones según qué tan importantes te parecen para el medio ambiente.',
+                categories: ['Nada importante', 'Poco importante', 'Importante', 'Muy importante'],
+            },
+            {
+                name: 'Dificultad',
+                indication: 'Clasifica las acciones según qué tan difícil es para ti realizarlas.',
+                categories: ['Muy fácil', 'Fácil', 'Difícil', 'Muy difícil'],
+            },
+        ];
+
         db.transaction(() => {
             db.prepare(`
                 INSERT INTO projects (_id, name, minOpenQuestionsCnt, introductionText, endingText, videoId, deleted)
@@ -92,6 +112,22 @@ router.post('/create/project/example', (req, res) => {
                 VALUES (?, ?, ?, 0, 0, NULL, ?)
             `);
             cards.forEach((name, idx) => cardStmt.run(newId(), name, idx + 1, projectId));
+
+            const clsStmt = db.prepare(`
+                INSERT INTO classifications (_id, name, indication, deleted, participantId, code, closed, projectId, static)
+                VALUES (?, ?, ?, 0, NULL, ?, 0, ?, 1)
+            `);
+            const catStmt = db.prepare(`
+                INSERT INTO categories (_id, name, code, classificationId, deleted, closed, projectId, static)
+                VALUES (?, ?, ?, ?, 0, 0, ?, 1)
+            `);
+            classifications.forEach((cls, ci) => {
+                const clsId = newId();
+                clsStmt.run(clsId, cls.name, cls.indication, ci + 1, projectId);
+                cls.categories.forEach((catName, ki) => {
+                    catStmt.run(newId(), catName, ki + 1, clsId, projectId);
+                });
+            });
         })();
 
         return res.json({ message: "Proyecto de ejemplo creado exitosamente", id: projectId });

@@ -28,9 +28,19 @@ pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let uploads = data_dir.join("uploads");
     let jwt_secret = read_or_create_secret(&data_dir.join("jwt.secret"))?;
 
-    eprintln!("[cmi] resource_dir = {}", resource_dir.display());
-    eprintln!("[cmi] entry        = {}", entry.display());
-    eprintln!("[cmi] data_dir     = {}", data_dir.display());
+    // Locate the bundled cloudflared binary next to our own executable
+    // so the Express backend can spawn it directly (sidesteps the Tauri 2
+    // ACL, which blocks IPC from http://127.0.0.1 webviews).
+    let cloudflared_path = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join(if cfg!(windows) { "cloudflared.exe" } else { "cloudflared" })))
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    eprintln!("[cmi] resource_dir     = {}", resource_dir.display());
+    eprintln!("[cmi] entry            = {}", entry.display());
+    eprintln!("[cmi] data_dir         = {}", data_dir.display());
+    eprintln!("[cmi] cloudflared_path = {cloudflared_path}");
 
     let node = app.shell().sidecar("node")?;
     let (mut rx, child) = node
@@ -44,6 +54,7 @@ pub fn spawn(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .env("JWT_SECRET", jwt_secret)
         .env("SQLITE_PATH", sqlite.to_string_lossy().to_string())
         .env("UPLOAD_DIR", uploads.to_string_lossy().to_string())
+        .env("CLOUDFLARED_PATH", cloudflared_path)
         .current_dir(&resource_dir)
         .spawn()?;
 

@@ -78,7 +78,7 @@ export class AdminPanelComponent implements OnInit {
     private readonly fileSaverService: FileSaverService,
     private readonly shareLink: ShareLinkService,
   ) {
-    this.canShareLink = this.shareLink.isAvailable();
+    this.shareLink.isAvailable().then(v => this.canShareLink = v);
   }
 
   openShareLink() {
@@ -199,7 +199,8 @@ export class AdminPanelComponent implements OnInit {
 
   createProject() {
     const dialogRef = this.dialog.open(ProjectFormDialogComponent, {
-      width: '300px',
+      width: '520px',
+      maxWidth: '95vw',
       data: { action: "create" }
     });
     dialogRef.afterClosed().subscribe(result => {
