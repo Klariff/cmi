@@ -10,9 +10,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p src-tauri/binaries
 
-# Detect Rust's target triple for the current host. Tauri requires sidecar
-# binaries to be named with this suffix so it picks the right one per OS/arch.
-TRIPLE="$(rustc -vV | sed -n 's/host: //p')"
+# Tauri sidecars are named after the target triple, not the host. Honour
+# $TARGET in CI so a cross-compile build (x86_64 from arm64 macOS) gets
+# the right cloudflared binary.
+TRIPLE="${TARGET:-$(rustc -vV | sed -n 's/host: //p')}"
 OUT="src-tauri/binaries/cloudflared-${TRIPLE}"
 
 case "$TRIPLE" in

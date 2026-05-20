@@ -12,23 +12,34 @@ on:
 
 jobs:
   release:
-    name: Build ${{ matrix.runner }}
+    name: Build ${{ matrix.label }}
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14        # Apple Silicon
+          - label: macos-arm64
+            runner: macos-14
             target: aarch64-apple-darwin
+            npm_arch: arm64
             args: "--target aarch64-apple-darwin"
-          - runner: macos-13        # Intel
+          - label: macos-x64
+            # Run x86_64 on the same Apple Silicon runner instead of the
+            # macos-13 queue, which can sit unscheduled for hours. We
+            # cross-compile via rustup target + npm --target_arch.
+            runner: macos-14
             target: x86_64-apple-darwin
+            npm_arch: x64
             args: "--target x86_64-apple-darwin"
-          - runner: windows-latest
+          - label: windows-x64
+            runner: windows-latest
             target: x86_64-pc-windows-msvc
+            npm_arch: x64
             args: ""
     runs-on: ${{ matrix.runner }}
+    env:
+      TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,8 +63,13 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('cmi-app/src-tauri/Cargo.lock') }}
 
       - name: Install backend dependencies
-        run: npm ci --omit=dev || npm install --omit=dev
+        shell: bash
         working-directory: cmi-back
+        # --target_arch tells prebuild-install (used by better-sqlite3) to
+        # download the binary matching the dmg's target architecture,
+        # which differs from the runner's host arch when cross-compiling.
+        run: |
+          npm install --omit=dev --target_arch=${{ matrix.npm_arch }} --target_platform=${{ runner.os == 'Windows' && 'win32' || (runner.os == 'macOS' && 'darwin' || 'linux') }}
 
       - name: Install frontend dependencies
         run: npm ci || npm install

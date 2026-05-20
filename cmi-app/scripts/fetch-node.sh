@@ -8,7 +8,9 @@ cd "$(dirname "$0")/.."
 mkdir -p src-tauri/binaries
 
 NODE_VERSION="${NODE_VERSION:-v20.20.2}"
-TRIPLE="$(rustc -vV | sed -n 's/host: //p')"
+# Honour TARGET env var so CI can cross-compile (build x86_64 sidecar on
+# an arm64 host, etc); fall back to the host triple for local dev.
+TRIPLE="${TARGET:-$(rustc -vV | sed -n 's/host: //p')}"
 
 case "$TRIPLE" in
     x86_64-unknown-linux-gnu)
