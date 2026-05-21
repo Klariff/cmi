@@ -45,7 +45,11 @@
                     <button id="share-link" mat-button (click)="openShareLink()" class="sidenav-item">
                         <mat-icon>cloud</mat-icon>
                         Enlace público
-                    </button><br>
+                    </button>
+                    <div class="tunnel-status">
+                        <span class="dot" [class.active]="tunnelUrl"></span>
+                        <span class="label">{{ tunnelUrl ? 'Activo' : 'Inactivo' }}</span>
+                    </div>
                 </div>
             </div>
             <div style="position: absolute; bottom: 100px;">

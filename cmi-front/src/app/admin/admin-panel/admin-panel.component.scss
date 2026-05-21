@@ -33,6 +33,31 @@
     background-color: #ececec;
 }
 
+.tunnel-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: -4px 0 8px 24px;
+    font-size: 0.78rem;
+    color: rgba(0, 0, 0, 0.55);
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #b0b8c1;
+        transition: background 0.2s;
+
+        &.active {
+            background: #2e7d32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.18);
+        }
+    }
+    .label {
+        line-height: 1;
+    }
+}
+
 
 .example-list {
     width: 500px;

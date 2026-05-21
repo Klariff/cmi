@@ -70,6 +70,7 @@ export class AdminPanelComponent implements OnInit {
   newUser: any = {};
   selectedVideoFile: File | null = null;
   canShareLink: boolean = false;
+  tunnelUrl: string | null = null;
 
   constructor(
     private readonly dialog: MatDialog,
@@ -79,6 +80,7 @@ export class AdminPanelComponent implements OnInit {
     private readonly shareLink: ShareLinkService,
   ) {
     this.shareLink.isAvailable().then(v => this.canShareLink = v);
+    this.shareLink.url$.subscribe(url => this.tunnelUrl = url);
   }
 
   openShareLink() {
