@@ -1,11 +1,16 @@
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const ExcelJS = require('exceljs');
 const { db } = require('../db');
 
-// Walks card → category → classification → participant via the joins
-// (category_cards is the M2M between categories and cards). Returns the same
-// shape the previous mongo aggregation did:
-//   [{ _id: <cardCode>, classifications: [{ name, code, participantId, closed, [cardName, categoryName] }] }]
+// Write temp export files to the OS tmp dir instead of the backend's cwd.
+// In the packaged Tauri app the cwd is the app bundle's Resources/cmi-back
+// directory, which is read-only on some installs; tmpdir is always writable.
+function tmpPath(name) {
+    return path.join(os.tmpdir(), name);
+}
+
 function buildResults(projectId, includeLabels) {
     const rows = db.prepare(`
         SELECT c.code        AS cardCode,
@@ -25,7 +30,6 @@ function buildResults(projectId, includeLabels) {
         ORDER BY p._id, cls.code, cat.code
     `).all(projectId);
 
-    // Group by cardCode preserving the (participant, classification, category) order.
     const groups = new Map();
     for (const r of rows) {
         if (!groups.has(r.cardCode)) groups.set(r.cardCode, []);
@@ -65,7 +69,7 @@ function writeCsv(filePath, rows) {
 }
 
 async function exportCSV(projectId, labeled) {
-    const filePath = 'results.csv';
+    const filePath = tmpPath(labeled ? 'cmi-results-labeled.csv' : 'cmi-results.csv');
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     const result = buildResults(projectId, labeled);
@@ -85,7 +89,7 @@ module.exports = {
     exportLabeledResultsCSV: (projectId) => exportCSV(projectId, true),
 
     async exportParticipantsExcel(projectId) {
-        const filePath = 'participants.xlsx';
+        const filePath = tmpPath('cmi-participants.xlsx');
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
         const participants = db.prepare(`

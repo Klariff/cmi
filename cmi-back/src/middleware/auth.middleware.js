@@ -26,12 +26,17 @@ module.exports = (req, res, next) => {
     const isPublic = PUBLIC_PATHS.some(p => p.method === req.method && req.path === p.path);
     if (isPublic) return next();
 
+    // Accept the JWT via Authorization header (preferred) or ?token=… query
+    // parameter — needed for plain anchor navigations like file downloads,
+    // where we can't set a custom header.
     const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const headerToken = authHeader && authHeader.startsWith('Bearer ')
+        ? authHeader.split(' ')[1]
+        : null;
+    const token = headerToken || req.query.token;
+    if (!token) {
         return res.status(logging.authenticationError.code).json(logging.authenticationError);
     }
-
-    const token = authHeader.split(' ')[1];
     try {
         req.user = jwt.verify(token, env.auth.jwtSecret);
         next();

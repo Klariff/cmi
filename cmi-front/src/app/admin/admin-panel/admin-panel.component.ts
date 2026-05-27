@@ -587,31 +587,36 @@ export class AdminPanelComponent implements OnInit {
     }
   }
 
+  // Navigate to the backend download URL with the JWT and desired filename
+  // baked into the query string. The webview then honours Content-Disposition
+  // and saves the file with the right name — bypassing FileSaver.js, which
+  // can't set a filename reliably inside Tauri's WKWebView.
+  private triggerDownload(path: string, filename: string) {
+    const projectId = sessionStorage.getItem('projectId');
+    const token = sessionStorage.getItem('token');
+    if (!projectId || !token) return;
+    const params = new URLSearchParams({ projectId, token, name: filename });
+    const url = `${environment.baseURL}${path}?${params.toString()}`;
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;          // honoured on most browsers
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => a.remove(), 0);
+  }
+
   downloadCSV() {
-    Swal.fire({ title: 'Descargando resultados', allowOutsideClick: false, showConfirmButton: false });
-    Swal.showLoading();
-    this.httpClient.get(`${environment.baseURL}download/results?projectId=${sessionStorage.getItem('projectId')}`, { responseType: "blob" }).subscribe((response: any) => {
-      this.fileSaverService.save(response, `CMI-Resultados-${this.formatDate(new Date())}.csv`);
-      Swal.close();
-    })
+    this.triggerDownload('download/results', `CMI-Resultados-${this.formatDate(new Date())}.csv`);
   }
 
   downloadLabeledCSV() {
-    Swal.fire({ title: 'Descargando resultados', allowOutsideClick: false, showConfirmButton: false });
-    Swal.showLoading();
-    this.httpClient.get(`${environment.baseURL}download/labeled-results?projectId=${sessionStorage.getItem('projectId')}`, { responseType: "blob" }).subscribe((response: any) => {
-      this.fileSaverService.save(response, `CMI-Resultados-Etiquetados-${this.formatDate(new Date())}.csv`);
-      Swal.close();
-    })
+    this.triggerDownload('download/labeled-results', `CMI-Resultados-Etiquetados-${this.formatDate(new Date())}.csv`);
   }
 
   downloadParticipants() {
-    Swal.fire({ title: 'Descargando participantes', allowOutsideClick: false, showConfirmButton: false });
-    Swal.showLoading();
-    this.httpClient.get(`${environment.baseURL}download/participants?projectId=${sessionStorage.getItem('projectId')}`, { responseType: "blob" }).subscribe((response: any) => {
-      this.fileSaverService.save(response, `CMI-Participantes-${this.formatDate(new Date())}.xlsx`);
-      Swal.close();
-    })
+    this.triggerDownload('download/participants', `CMI-Participantes-${this.formatDate(new Date())}.xlsx`);
   }
 
   handlePageEventClassifications(e: PageEvent) {

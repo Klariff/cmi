@@ -78,22 +78,44 @@ router.delete('/delete/file', (req, res) => {
     }
 });
 
+// Honour ?name=<filename> so the desktop webview gets a sane Content-Disposition
+// filename instead of "Unknown" (FileSaver.js can't set the download attribute
+// reliably in WKWebView, so the backend has to be the naming authority).
+function sendDownload(res, filePath, requested, fallback) {
+    const safeName = (requested || fallback).replace(/[^\w.\- ()ñÑáéíóúÁÉÍÓÚ]/g, '_');
+    res.download(filePath, safeName, () => {
+        setTimeout(() => fs.unlink(filePath, () => {}), 1000);
+    });
+}
+
 router.get('/download/results', async (req, res) => {
-    let filePath = await exportResultsCSV(req.query.projectId);
-    res.download(filePath);
-    setTimeout(() => fs.unlink(filePath, () => {}), 1000);
+    try {
+        const filePath = await exportResultsCSV(req.query.projectId);
+        sendDownload(res, filePath, req.query.name, 'resultados.csv');
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
 });
 
 router.get('/download/labeled-results', async (req, res) => {
-    let filePath = await exportLabeledResultsCSV(req.query.projectId);
-    res.download(filePath);
-    setTimeout(() => fs.unlink(filePath, () => {}), 1000);
+    try {
+        const filePath = await exportLabeledResultsCSV(req.query.projectId);
+        sendDownload(res, filePath, req.query.name, 'resultados-etiquetados.csv');
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
 });
 
 router.get('/download/participants', async (req, res) => {
-    let filePath = await exportParticipantsExcel(req.query.projectId);
-    res.download(filePath);
-    setTimeout(() => fs.unlink(filePath, () => {}), 1000);
+    try {
+        const filePath = await exportParticipantsExcel(req.query.projectId);
+        sendDownload(res, filePath, req.query.name, 'participantes.xlsx');
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
 });
 
 module.exports = router;
