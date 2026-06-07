@@ -61,9 +61,14 @@ function buildClassificationHeaders(firstRowClassifications, labeled) {
     return headers;
 }
 
+function csvCell(v) {
+    const s = v == null ? '' : String(v);
+    return /[,"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
 function writeCsv(filePath, rows) {
     return new Promise((resolve, reject) => {
-        const csv = rows.map(r => r.join(',')).join('\n');
+        const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
         fs.writeFile(filePath, csv, (err) => err ? reject(err) : resolve(filePath));
     });
 }
