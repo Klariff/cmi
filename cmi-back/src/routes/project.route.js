@@ -162,6 +162,110 @@ router.post('/create/project', (req, res) => {
     }
 });
 
+// Duplicate a project's full template — name, parameters, video, cards (with
+// their images) and the static/default classifications and categories — into a
+// brand-new project linked to the requesting user. Participant data (their
+// info, open-question classifications and categories) is intentionally NOT
+// copied, so the new project starts with zero responses.
+router.post('/duplicate/project', (req, res) => {
+    try {
+        const { projectId, userId, name } = req.body;
+        if (!projectId) return res.status(logging.invalidParameters.code).json({ message: "El parametro projectId es requerido" });
+        if (!userId)    return res.status(logging.invalidParameters.code).json({ message: "userId es requerido" });
+
+        const source = db.prepare('SELECT * FROM projects WHERE _id = ? AND deleted = 0').get(projectId);
+        if (!source) return res.status(logging.invalidParameters.code).json({ message: "No se encontró el proyecto" });
+
+        // Read the template rows (everything except participant responses).
+        const cards = db.prepare('SELECT * FROM cards WHERE projectId = ? AND deleted = 0').all(projectId);
+        const classifications = db.prepare(
+            'SELECT * FROM classifications WHERE projectId = ? AND deleted = 0 AND static = 1'
+        ).all(projectId);
+        const categories = db.prepare(
+            'SELECT * FROM categories WHERE projectId = ? AND deleted = 0 AND static = 1'
+        ).all(projectId);
+
+        // Copy files on disk first (the filesystem isn't transactional) so the
+        // inserts below can reference the freshly-cloned ids. Track every file
+        // we create to roll them back if the DB transaction throws.
+        const createdFiles = [];
+        const newVideoId = fileStorage.copy('project', source.videoId);
+        if (newVideoId) createdFiles.push(['project', newVideoId]);
+
+        const cardIdMap = new Map();
+        const cardImageMap = new Map();
+        for (const c of cards) {
+            cardIdMap.set(c._id, newId());
+            const newImageId = fileStorage.copy('card', c.imageId);
+            cardImageMap.set(c._id, newImageId);
+            if (newImageId) createdFiles.push(['card', newImageId]);
+        }
+
+        const clsIdMap = new Map(classifications.map(c => [c._id, newId()]));
+        const catIdMap = new Map(categories.map(c => [c._id, newId()]));
+
+        const newProjectId = newId();
+        try {
+            db.transaction(() => {
+                db.prepare(`
+                    INSERT INTO projects (_id, name, minOpenQuestionsCnt, introductionText, endingText, videoId, deleted)
+                    VALUES (?, ?, ?, ?, ?, ?, 0)
+                `).run(
+                    newProjectId,
+                    name && name.trim() ? name.trim() : `${source.name} (copia)`,
+                    source.minOpenQuestionsCnt, source.introductionText, source.endingText, newVideoId
+                );
+                db.prepare('INSERT INTO user_projects (userId, projectId) VALUES (?, ?)').run(userId, newProjectId);
+
+                const cardStmt = db.prepare(`
+                    INSERT INTO cards (_id, name, code, deleted, onlyShowImage, imageId, projectId)
+                    VALUES (?, ?, ?, 0, ?, ?, ?)
+                `);
+                for (const c of cards) {
+                    cardStmt.run(cardIdMap.get(c._id), c.name, c.code, c.onlyShowImage, cardImageMap.get(c._id), newProjectId);
+                }
+
+                const clsStmt = db.prepare(`
+                    INSERT INTO classifications (_id, name, indication, deleted, participantId, code, closed, projectId, static)
+                    VALUES (?, ?, ?, 0, NULL, ?, ?, ?, ?)
+                `);
+                for (const c of classifications) {
+                    clsStmt.run(clsIdMap.get(c._id), c.name, c.indication, c.code, c.closed, newProjectId, c.static);
+                }
+
+                const catStmt = db.prepare(`
+                    INSERT INTO categories (_id, name, code, classificationId, deleted, closed, projectId, static)
+                    VALUES (?, ?, ?, ?, 0, ?, ?, ?)
+                `);
+                for (const c of categories) {
+                    catStmt.run(catIdMap.get(c._id), c.name, c.code, clsIdMap.get(c.classificationId) || null, c.closed, newProjectId, c.static);
+                }
+
+                // Re-link cards to the duplicated categories, remapping both ids.
+                const junctions = db.prepare(`
+                    SELECT cc.categoryId, cc.cardId FROM category_cards cc
+                    JOIN categories cat ON cat._id = cc.categoryId
+                    WHERE cat.projectId = ? AND cat.deleted = 0 AND cat.static = 1
+                `).all(projectId);
+                const ccStmt = db.prepare('INSERT OR IGNORE INTO category_cards (categoryId, cardId) VALUES (?, ?)');
+                for (const j of junctions) {
+                    const newCatId = catIdMap.get(j.categoryId);
+                    const newCardId = cardIdMap.get(j.cardId);
+                    if (newCatId && newCardId) ccStmt.run(newCatId, newCardId);
+                }
+            })();
+        } catch (txError) {
+            for (const [bucket, fileId] of createdFiles) fileStorage.delete(bucket, fileId);
+            throw txError;
+        }
+
+        return res.json({ message: "Proyecto duplicado exitosamente", id: newProjectId });
+    } catch (error) {
+        log(req, logging.internalServerError, error.message);
+        return res.status(logging.internalServerError.code).json(logging.internalServerError);
+    }
+});
+
 router.patch('/update/project', (req, res) => {
     try {
         delete req.body._id;

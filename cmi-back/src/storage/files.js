@@ -48,6 +48,21 @@ module.exports = {
     },
 
     /**
+     * Copy an existing file to a new id in the same bucket, preserving the
+     * extension. Returns the new fileId, or null if the source is missing.
+     */
+    copy(bucket, fileId) {
+        if (!fileId) return null;
+        const srcPath = findFilePath(bucket, fileId);
+        if (!srcPath) return null;
+        ensureBucket(bucket);
+        const ext = (path.extname(srcPath).slice(1) || 'bin').toLowerCase();
+        const newFileId = newId();
+        fs.copyFileSync(srcPath, path.join(bucketDir(bucket), `${newFileId}.${ext}`));
+        return newFileId;
+    },
+
+    /**
      * Delete a file by id. No-op if missing.
      */
     delete(bucket, fileId) {

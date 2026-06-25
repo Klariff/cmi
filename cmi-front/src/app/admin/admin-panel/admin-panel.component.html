@@ -280,6 +280,16 @@
                     </mat-card-content>
                 </mat-card>
 
+                <mat-card class="config-card">
+                    <mat-card-title>Duplicar proyecto</mat-card-title>
+                    <mat-card-subtitle>Crea una copia con las tarjetas y clasificaciones, sin los participantes ni sus respuestas</mat-card-subtitle>
+                    <mat-card-content class="button-group">
+                        <button mat-stroked-button color="primary" (click)="duplicateProject()">
+                            <mat-icon>content_copy</mat-icon> Duplicar proyecto
+                        </button>
+                    </mat-card-content>
+                </mat-card>
+
                 <mat-card class="config-card danger-card">
                     <mat-card-title>Acciones irreversibles</mat-card-title>
                     <mat-card-subtitle>Estas acciones no se pueden deshacer</mat-card-subtitle>

@@ -194,6 +194,43 @@ export class AdminPanelComponent implements OnInit {
     })
   }
 
+  duplicateProject() {
+    Swal.fire({
+      title: 'Duplicar proyecto',
+      text: "Se creará una copia con las tarjetas y clasificaciones, pero sin los participantes ni sus respuestas",
+      input: 'text',
+      inputValue: `${this.project?.name ?? ''} (copia)`,
+      inputPlaceholder: 'Nombre del nuevo proyecto',
+      showCancelButton: true,
+      confirmButtonText: 'Duplicar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => (!value || !value.trim()) ? 'Debe ingresar un nombre' : null
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      Swal.fire({ title: "Duplicando proyecto", allowOutsideClick: false, showConfirmButton: false });
+      Swal.showLoading();
+      this.httpClient.post(`${environment.baseURL}duplicate/project`, {
+        projectId: this.selectedProject,
+        userId: sessionStorage.getItem("userId"),
+        name: result.value.trim()
+      }).subscribe({
+        next: (data: any) => {
+          Swal.close();
+          this.toastr.success('Proyecto duplicado');
+          setTimeout(() => {
+            sessionStorage.setItem("projectId", data.id);
+            location.reload();
+          }, 1000);
+        },
+        error: (error) => {
+          Swal.close();
+          console.error(error);
+          this.toastr.error('Error al duplicar el proyecto');
+        }
+      });
+    });
+  }
+
   formatDate(date: any) {
     date = new Date(date).toISOString();
     return date.split("T")[0].split("-").reverse().join("/");
